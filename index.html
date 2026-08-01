@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+<title>Le Registre</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root{
+    --paper:#EFE7D8;
+    --paper-light:#FAF6EC;
+    --paper-line: rgba(30,42,56,0.08);
+    --ink:#1E2A38;
+    --ink-soft:#5B6B7A;
+    --ink-faint:#8B95A1;
+    --green:#3F6B4F;
+    --green-soft:#E4ECE6;
+    --brass:#A67C3D;
+    --brass-soft:#F1E6D3;
+    --rouge:#A13D3D;
+    --rouge-soft:#F3E3E1;
+    --radius:14px;
+    --shadow: 0 1px 2px rgba(30,42,56,0.06), 0 6px 20px rgba(30,42,56,0.06);
+  }
+  *{box-sizing:border-box;}
+  body{ margin:0; font-family:'Inter',sans-serif; background: var(--paper); color: var(--ink); -webkit-font-smoothing:antialiased; }
+  .app{ max-width:520px; margin:0 auto; min-height:100vh; background: var(--paper); display:flex; flex-direction:column; position:relative; }
+
+  /* ---------- LOGIN ---------- */
+  .login-screen{
+    min-height:100vh; display:flex; flex-direction:column; justify-content:center;
+    padding: 32px 26px; background: var(--ink); color: var(--paper-light);
+  }
+  .login-screen .eyebrow{ font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:var(--brass); margin-bottom:8px; }
+  .login-screen h1{ font-family:'Fraunces',serif; font-weight:600; font-size:30px; margin:0 0 6px; }
+  .login-screen p.sub{ color:#C9D2DA; font-size:14px; margin:0 0 28px; line-height:1.5; }
+  .login-screen .field label{ color:#C9D2DA; }
+  .login-screen .field input{ background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.18); color:#fff; }
+  .login-screen .field input::placeholder{ color:#7C8A98; }
+  .login-screen .btn-primary{ background: var(--brass); color: var(--ink); }
+  .switch-link{ text-align:center; margin-top:16px; font-size:13px; color:#C9D2DA; }
+  .switch-link a{ color: var(--brass); cursor:pointer; text-decoration:underline; }
+  .login-error{ background: rgba(161,61,61,0.18); color:#F0B8B8; border:1px solid rgba(161,61,61,0.4); padding:9px 12px; border-radius:10px; font-size:12.5px; margin-bottom:14px; display:none; }
+  .login-error.show{ display:block; }
+
+  /* ---------- HEADER ---------- */
+  header.cover{ padding: 22px 20px 16px; background: var(--ink); color: var(--paper-light); position:relative; border-bottom: 4px double var(--brass); }
+  header.cover .eyebrow{ font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color: var(--brass); margin-bottom:6px; display:flex; justify-content:space-between; align-items:center; }
+  header.cover .eyebrow span.logout{ text-transform:none; letter-spacing:0; cursor:pointer; color:#C9D2DA; }
+  header.cover h1{ font-family:'Fraunces',serif; font-weight:600; font-size:25px; margin:0; letter-spacing:-0.01em; }
+  header.cover .userline{ font-family:'Fraunces',serif; font-style:italic; font-size:14px; color:#C9D2DA; margin-top:4px; }
+
+  nav.tabs{ display:flex; padding: 0 20px; gap: 4px; border-bottom: 1px solid var(--paper-line); background:var(--paper); }
+  nav.tabs button{ flex:1; background:none; border:none; font-family:'Inter',sans-serif; font-weight:600; font-size:13px; color: var(--ink-faint); padding: 10px 4px 12px; cursor:pointer; border-bottom: 3px solid transparent; transition: color .15s; }
+  nav.tabs button.active{ color: var(--ink); border-bottom-color: var(--brass); }
+
+  main{ flex:1; padding: 18px 20px 100px; }
+  section.view{ display:none; }
+  section.view.active{ display:block; }
+
+  h2.section-title{ font-family:'Fraunces',serif; font-weight:600; font-size:17px; margin: 4px 0 12px; display:flex; align-items:center; justify-content:space-between; gap:8px; }
+  .muted{ color: var(--ink-soft); font-size:13px; }
+  .back-link{ font-size:13px; color:var(--ink-soft); cursor:pointer; display:inline-flex; align-items:center; gap:4px; margin-bottom:10px; }
+  .back-link:hover{ color:var(--ink); }
+
+  /* ---------- FAMILY CARDS ---------- */
+  .family-grid{ display:flex; flex-direction:column; gap:10px; }
+  .family-card{ background: var(--paper-light); border-radius: var(--radius); box-shadow: var(--shadow); padding: 16px; display:flex; align-items:center; gap:14px; cursor:pointer; border: 1.5px solid transparent; transition: border-color .15s; }
+  .family-card:hover{ border-color: var(--brass); }
+  .family-card .badge{ width:46px;height:46px;border-radius:50%; background: var(--green-soft); color:var(--green); display:flex;align-items:center;justify-content:center; font-family:'Fraunces',serif; font-weight:600; font-size:17px; flex-shrink:0; }
+  .family-card .info{ flex:1; min-width:0; }
+  .family-card .info .name{ font-family:'Fraunces',serif; font-weight:600; font-size:16px; display:flex; align-items:center; gap:6px; }
+  .family-card .info .name .edit-ico{ font-size:12px; color:var(--ink-faint); cursor:pointer; }
+  .family-card .info .stat{ font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--ink-soft); margin-top:3px; }
+  .family-card .chevron{ color: var(--ink-faint); font-size:18px; }
+
+  /* ---------- SUMMARY STRIP ---------- */
+  .summary{ display:flex; padding: 14px 20px 4px; gap:10px; }
+  .summary .card{ flex:1; background: var(--paper-light); border-radius: var(--radius); padding: 12px 14px; box-shadow: var(--shadow); }
+  .summary .card .label{ font-size:10.5px; text-transform:uppercase; letter-spacing:0.08em; color: var(--ink-faint); font-family:'IBM Plex Mono',monospace; }
+  .summary .card .value{ font-family:'Fraunces',serif; font-weight:600; font-size:19px; margin-top:4px; color: var(--ink); }
+
+  /* ---------- FILTER BAR ---------- */
+  .filter-bar{ display:flex; gap:8px; margin-bottom:14px; overflow-x:auto; padding-bottom:2px; }
+  .filter-bar select{ font-family:'Inter',sans-serif; font-size:12.5px; padding:8px 10px; border-radius:10px; border:1.5px solid var(--paper-line); background:var(--paper-light); color:var(--ink-soft); flex-shrink:0; }
+
+  /* ---------- LIST GROUP ---------- */
+  .list-group{ margin-bottom:16px; }
+  .list-group-header{ display:flex; justify-content:space-between; align-items:baseline; padding: 0 2px 8px; }
+  .list-group-header .lname{ font-family:'Fraunces',serif; font-weight:600; font-size:14.5px; }
+  .list-group-header .ltotal{ font-family:'IBM Plex Mono',monospace; font-size:12.5px; color: var(--ink-soft); }
+
+  .ledger{ background: var(--paper-light); border-radius: var(--radius); box-shadow: var(--shadow); overflow:hidden; }
+  .ledger-row{ display:flex; align-items:center; gap:12px; padding: 13px 14px; border-bottom: 1px solid var(--paper-line); position:relative; }
+  .ledger-row:last-child{ border-bottom:none; }
+  .ledger-row .who{ width:38px;height:38px;border-radius:50%; display:flex;align-items:center;justify-content:center; font-family:'Fraunces',serif; font-weight:600; font-size:14px; background: var(--brass-soft); color:var(--brass); flex-shrink:0; }
+  .ledger-row .info{ flex:1; min-width:0; }
+  .ledger-row .info .name{ font-weight:600; font-size:14px; }
+  .ledger-row .info .meta{ font-family:'IBM Plex Mono',monospace; font-size:11.5px; color: var(--ink-faint); margin-top:2px; }
+  .ledger-row .amount{ font-family:'IBM Plex Mono',monospace; font-weight:600; font-size:14.5px; white-space:nowrap; }
+
+  .stamp{ font-family:'IBM Plex Mono',monospace; font-size:9.5px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; padding: 3px 8px; border-radius: 20px; white-space:nowrap; cursor:pointer; user-select:none; }
+  .stamp.paid{ color: var(--green); border: 1.5px solid var(--green); transform: rotate(-4deg); }
+  .stamp.pending{ color: var(--brass); border: 1.5px dashed var(--brass); transform: rotate(3deg); }
+
+  .row-actions{ display:flex; align-items:center; gap:8px; }
+  .del-btn{ background:none;border:none;color:var(--ink-faint); cursor:pointer; font-size:15px; padding:4px; line-height:1; }
+  .del-btn:hover{ color: var(--rouge); }
+
+  .empty{ text-align:center; padding: 40px 20px; color: var(--ink-faint); }
+  .empty .glyph{ font-size:26px; margin-bottom:8px; }
+  .empty .title{ font-family:'Fraunces',serif; font-size:15px; color:var(--ink-soft); margin-bottom:4px;}
+
+  /* ---------- MEMBER CARD ---------- */
+  .fam-tag{ font-family:'IBM Plex Mono',monospace; font-size:9.5px; text-transform:uppercase; letter-spacing:0.05em; color:var(--ink-faint); margin: 14px 0 6px 2px; }
+  .member-card{ background: var(--paper-light); border-radius: var(--radius); box-shadow: var(--shadow); padding: 13px 14px; margin-bottom: 8px; display:flex; align-items:center; gap:12px; }
+  .member-card .who{ width:42px;height:42px;border-radius:50%; display:flex;align-items:center;justify-content:center; font-family:'Fraunces',serif; font-weight:600; font-size:15px; background: var(--green-soft); color:var(--green); flex-shrink:0; }
+  .member-card .info{ flex:1; }
+  .member-card .info .name{ font-weight:600; font-size:14.5px; }
+  .member-card .info .total{ font-family:'IBM Plex Mono',monospace; font-size:11.5px; color:var(--ink-soft); margin-top:2px; }
+  .member-card .acts{ display:flex; gap:2px; }
+
+  /* ---------- FAB ---------- */
+  .fab{ position:fixed; left:50%; transform: translateX(-50%); bottom: 22px; max-width:520px; width: calc(100% - 40px); z-index:20; }
+  .fab button{ width:100%; background: var(--ink); color: var(--paper-light); border:none; border-radius: 999px; padding: 15px; font-family:'Inter',sans-serif; font-weight:600; font-size:14.5px; box-shadow: 0 8px 24px rgba(30,42,56,0.28); cursor:pointer; }
+
+  /* ---------- SHEET ---------- */
+  .overlay{ position:fixed; inset:0; background: rgba(30,42,56,0.45); display:none; align-items:flex-end; justify-content:center; z-index:30; }
+  .overlay.active{ display:flex; }
+  .sheet{ background: var(--paper-light); width:100%; max-width:520px; border-radius: 20px 20px 0 0; padding: 22px 20px 28px; max-height:88vh; overflow-y:auto; animation: slideup .2s ease-out; }
+  @keyframes slideup{ from{ transform:translateY(16px); opacity:0;} to{ transform:translateY(0); opacity:1;} }
+  .sheet h3{ font-family:'Fraunces',serif; font-weight:600; font-size:19px; margin: 0 0 16px; }
+  .field{ margin-bottom: 14px; }
+  .field label{ display:block; font-size:11.5px; font-weight:600; text-transform:uppercase; letter-spacing:0.05em; color: var(--ink-soft); margin-bottom:6px; }
+  .field input, .field select, .field textarea{ width:100%; padding: 11px 12px; border-radius: 10px; border: 1.5px solid var(--paper-line); background: var(--paper); font-family:'Inter',sans-serif; font-size:14.5px; color: var(--ink); }
+  .field input:focus, .field select:focus, .field textarea:focus{ outline: 2px solid var(--brass); outline-offset:1px; border-color:transparent; }
+  .field small.hint{ display:block; margin-top:5px; font-size:11.5px; color:var(--ink-faint); }
+  .toggle-group{ display:flex; gap:8px; margin-bottom:14px; }
+  .toggle-group button{ flex:1; padding:10px; border-radius:10px; border:1.5px solid var(--paper-line); background:var(--paper); color:var(--ink-soft); font-weight:600; font-size:13px; cursor:pointer; font-family:'Inter',sans-serif; }
+  .toggle-group button.active{ background: var(--ink); color: var(--paper-light); border-color:var(--ink); }
+  .sheet-actions{ display:flex; gap:10px; margin-top:6px; }
+  .sheet-actions button{ flex:1; padding:13px; border-radius:12px; border:none; font-weight:600; font-size:14px; cursor:pointer; font-family:'Inter',sans-serif; }
+  .btn-primary{ background: var(--ink); color: var(--paper-light); }
+  .btn-secondary{ background: var(--paper); color: var(--ink-soft); border:1.5px solid var(--paper-line) !important; }
+
+  .dashed-btn{ width:100%; margin-top:4px; padding:13px; border-radius:12px; border:1.5px dashed var(--brass); background:var(--brass-soft); color:var(--brass); font-weight:600; font-size:14px; cursor:pointer; font-family:'Inter',sans-serif; }
+
+  .toast{ position:fixed; top:16px; left:50%; transform:translateX(-50%); background: var(--ink); color:var(--paper-light); font-size:13px; padding: 10px 18px; border-radius: 999px; z-index:50; opacity:0; transition: opacity .25s, transform .25s; pointer-events:none; font-family:'Inter',sans-serif; max-width:88%; text-align:center; }
+  .toast.show{ opacity:1; transform: translateX(-50%) translateY(4px); }
+
+  .loading-screen{ position:fixed; inset:0; background:var(--paper); display:flex; align-items:center; justify-content:center; flex-direction:column; gap:10px; z-index:100; }
+  .loading-screen .glyph{ font-family:'Fraunces',serif; font-size:22px; color:var(--ink-soft); }
+
+  .readonly-badge{ font-family:'IBM Plex Mono',monospace; font-size:10.5px; text-transform:uppercase; letter-spacing:0.06em; color: var(--ink-faint); background: var(--paper-light); border:1px solid var(--paper-line); padding:5px 10px; border-radius:20px; display:inline-block; margin-bottom:12px; }
+  .stamp.readonly{ cursor:default; opacity:0.85; }
+
+  .chart-card{ background: var(--paper-light); border-radius: var(--radius); box-shadow: var(--shadow); padding: 16px 14px; margin-bottom:16px; }
+  .chart-card h3{ font-family:'Fraunces',serif; font-weight:600; font-size:14.5px; margin: 0 0 4px; }
+  .chart-card .chart-sub{ font-size:11.5px; color:var(--ink-faint); margin-bottom:10px; font-family:'IBM Plex Mono',monospace; }
+  .chart-empty{ text-align:center; padding:24px 10px; color:var(--ink-faint); font-size:13px; }
+</style>
+</head>
+<body>
+<div class="app" id="app">
+
+  <div class="loading-screen" id="loadingScreen"><div class="glyph">Ouverture du registre…</div></div>
+
+  <!-- LOGIN -->
+  <div class="login-screen" id="loginScreen" style="display:none;">
+    <div class="eyebrow">Caisse familiale</div>
+    <h1 id="loginTitle">Le Registre</h1>
+    <p class="sub" id="loginSub">Entrez votre code personnel pour accéder au registre.</p>
+    <div class="login-error" id="loginError"></div>
+    <div id="loginFormZone"></div>
+  </div>
+
+  <!-- APP SHELL -->
+  <div id="appShell" style="display:none;">
+    <header class="cover">
+      <div class="eyebrow"><span>Caisse familiale</span><span class="logout" id="logoutBtn">Déconnexion</span></div>
+      <h1>Le Registre</h1>
+      <div class="userline" id="userline"></div>
+    </header>
+
+    <nav class="tabs">
+      <button class="tab-btn active" data-view="apercu">Aperçu</button>
+      <button class="tab-btn" data-view="cotisations">Cotisations</button>
+      <button class="tab-btn" data-view="membres">Membres</button>
+      <button class="tab-btn" data-view="evolution">Évolution</button>
+    </nav>
+
+    <main>
+      <section class="view active" id="view-apercu">
+        <h2 class="section-title">Choisir une famille</h2>
+        <div class="family-grid" id="familyGrid"></div>
+      </section>
+
+      <section class="view" id="view-cotisations">
+        <div id="cotisationsInner"></div>
+      </section>
+
+      <section class="view" id="view-membres">
+        <h2 class="section-title">Membres</h2>
+        <div id="membersList"></div>
+      </section>
+
+      <section class="view" id="view-evolution">
+        <div id="evolutionInner"></div>
+      </section>
+    </main>
+
+    <div class="fab" id="fabAdd" style="display:none;">
+      <button id="fabBtn">＋ Ajouter une cotisation</button>
+    </div>
+  </div>
+
+  <div class="overlay" id="overlay"><div class="sheet" id="sheetContent"></div></div>
+  <div class="toast" id="toast"></div>
+</div>
+
+<script>
+/* Stockage externe (jsonblob.com) — indépendant de Claude, aucun compte requis pour les visiteurs.
+   BLOB_ID doit être renseigné une fois le registre initialisé sur https://jsonblob.com */
+const BLOB_ID = '019fbef9-9fca-7472-a0bd-5065ab7385da';
+const API_BASE = 'https://jsonblob.com/api/jsonBlob/';
+const MONTHS = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+
+let data = { families: [], members: [], lists: [], cotisations: [] };
+let session = { memberId: null };
+let ui = { view:'apercu', activeFamilyId:null, listFilter:'', yearFilter:'', monthFilter:'', evoYear:'' };
+
+const $ = sel => document.querySelector(sel);
+const $$ = sel => Array.from(document.querySelectorAll(sel));
+
+function euros(n){ return (Math.round(n*100)/100).toLocaleString('fr-FR',{minimumFractionDigits:n%1!==0?2:0,maximumFractionDigits:2}) + ' €'; }
+function initials(str){ return (str||'').trim().split(/\s+/).map(w=>w[0]).slice(0,2).join('').toUpperCase(); }
+function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
+function escapeHTML(str){ const d=document.createElement('div'); d.textContent=str||''; return d.innerHTML; }
+function showToast(msg){ const t=$('#toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2000); }
+
+function defaultData(){
+  return {
+    families: [
+      { id:'fam1', name:'AGBOKOUVIWO' },
+      { id:'fam2', name:'ANYRONVIWO' }
+    ],
+    members: [],
+    lists: [],
+    cotisations: []
+  };
+}
+
+/* Identités habilitées à saisir/gérer les cotisations. Comparaison insensible à la casse. */
+const ADMIN_IDENTITIES = [
+  { nom:'AGBOKOU', prenom:'DANIEL' },
+  { nom:'AMOUZOU', prenom:'PROSPER' }
+];
+function isAdmin(m){
+  if(!m) return false;
+  const nom = (m.nom||'').trim().toUpperCase();
+  const prenom = (m.prenom||'').trim().toUpperCase();
+  return ADMIN_IDENTITIES.some(a => a.nom===nom && a.prenom===prenom);
+}
+function currentMember(){ return data.members.find(m=>m.id===session.memberId); }
+
+async function loadData(){
+  if(!BLOB_ID || BLOB_ID === 'REPLACE_WITH_BLOB_ID'){
+    showSetupError('Le registre n’a pas encore été configuré. Contactez l’administrateur.');
+    return;
+  }
+  try{
+    const res = await fetch(API_BASE + BLOB_ID, { headers: {'Accept':'application/json'} });
+    if(!res.ok) throw new Error('registre introuvable ('+res.status+')');
+    const loaded = await res.json();
+    data = Object.assign(defaultData(), loaded);
+    if(!data.families || data.families.length===0) data.families = defaultData().families;
+  }catch(e){
+    console.error(e);
+    showSetupError('Impossible de contacter le registre. Vérifiez votre connexion internet et réessayez.');
+    return;
+  }
+  migrateFamilies();
+  $('#loadingScreen').style.display='none';
+  showLogin();
+}
+
+function showSetupError(msg){
+  $('#loadingScreen').innerHTML = `<div class="glyph" style="text-align:center;padding:0 24px;">${escapeHTML(msg)}</div><button id="retryBtn" style="margin-top:14px;padding:10px 18px;border-radius:20px;border:none;background:var(--ink);color:var(--paper-light);font-family:'Inter',sans-serif;font-weight:600;cursor:pointer;">Réessayer</button>`;
+  $('#retryBtn').onclick = () => { $('#loadingScreen').innerHTML = '<div class="glyph">Ouverture du registre…</div>'; loadData(); };
+}
+
+function migrateFamilies(){
+  const rename = { fam1:'AGBOKOUVIWO', fam2:'ANYRONVIWO' };
+  data.families.forEach(f=>{ if(rename[f.id]) f.name = rename[f.id]; });
+  const before = data.families.length;
+  data.families = data.families.filter(f=>f.id==='fam1' || f.id==='fam2');
+  if(data.families.length !== before) saveData();
+}
+
+async function saveData(){
+  try{
+    const res = await fetch(API_BASE + BLOB_ID, {
+      method: 'PUT',
+      headers: { 'Content-Type':'application/json', 'Accept':'application/json' },
+      body: JSON.stringify(data)
+    });
+    if(!res.ok) throw new Error('échec de l’enregistrement ('+res.status+')');
+  }catch(e){
+    console.error(e);
+    showToast("Erreur d'enregistrement, vérifiez votre connexion et réessayez.");
+  }
+}
+
+/* ================= LOGIN ================= */
+function showLogin(){
+  $('#loginScreen').style.display='flex';
+  $('#appShell').style.display='none';
+  renderLoginForm();
+}
+
+function renderLoginForm(){
+  $('#loginError').classList.remove('show');
+  $('#loginFormZone').innerHTML = `
+    <div class="field"><label>Code personnel</label><input type="text" id="l_code" placeholder="ex : 4821 ou motdepasse"></div>
+    <div class="sheet-actions" style="margin-top:6px;"><button class="btn-primary" id="l_submit" style="flex:1;padding:13px;border-radius:12px;border:none;font-weight:600;font-size:14px;cursor:pointer;">Se connecter</button></div>
+    <div class="switch-link">Pas encore de profil ? <a id="l_signup">Créer mon profil</a></div>
+  `;
+  $('#l_submit').onclick = doLogin;
+  $('#l_code').addEventListener('keydown', e=>{ if(e.key==='Enter') doLogin(); });
+  $('#l_signup').onclick = renderSignupForm;
+}
+
+function doLogin(){
+  const code = $('#l_code').value.trim();
+  if(!code){ loginError('Entrez votre code personnel.'); return; }
+  const m = data.members.find(m=>m.code===code);
+  if(!m){ loginError('Code non reconnu. Créez un profil si c’est votre première visite.'); return; }
+  session.memberId = m.id;
+  enterApp();
+}
+
+function loginError(msg){ const el=$('#loginError'); el.textContent=msg; el.classList.add('show'); }
+
+function renderSignupForm(){
+  $('#loginError').classList.remove('show');
+  $('#loginFormZone').innerHTML = `
+    <div class="field"><label>Prénom</label><input type="text" id="s_prenom" placeholder="ex : Awa"></div>
+    <div class="field"><label>Nom</label><input type="text" id="s_nom" placeholder="ex : Diallo"></div>
+    <div class="field"><label>Famille</label>
+      <select id="s_family">${data.families.map(f=>`<option value="${f.id}">${escapeHTML(f.name)}</option>`).join('')}</select>
+    </div>
+    <div class="field"><label>Choisissez votre code personnel</label><input type="text" id="s_code" placeholder="ex : 4821">
+      <small class="hint">Ce code vous servira à vous connecter et à protéger votre fiche. Gardez-le pour vous.</small>
+    </div>
+    <div class="sheet-actions" style="margin-top:6px;"><button class="btn-primary" id="s_submit" style="flex:1;padding:13px;border-radius:12px;border:none;font-weight:600;font-size:14px;cursor:pointer;">Créer mon profil</button></div>
+    <div class="switch-link">Déjà un code ? <a id="s_login">Se connecter</a></div>
+  `;
+  $('#s_login').onclick = renderLoginForm;
+  $('#s_submit').onclick = doSignup;
+}
+
+function doSignup(){
+  const prenom = $('#s_prenom').value.trim();
+  const nom = $('#s_nom').value.trim();
+  const familyId = $('#s_family').value;
+  const code = $('#s_code').value.trim();
+  if(!prenom || !nom){ loginError('Indiquez votre nom et prénom.'); return; }
+  if(!code){ loginError('Choisissez un code personnel.'); return; }
+  if(data.members.some(m=>m.code===code)){ loginError('Ce code est déjà utilisé, choisissez-en un autre.'); return; }
+  const member = { id: uid(), prenom, nom, code, familyId };
+  data.members.push(member);
+  saveData();
+  session.memberId = member.id;
+  enterApp();
+  showToast('Profil créé, bienvenue !');
+}
+
+function enterApp(){
+  $('#loginScreen').style.display='none';
+  $('#appShell').style.display='block';
+  const m = data.members.find(m=>m.id===session.memberId);
+  $('#userline').textContent = m ? `Connecté(e) : ${m.prenom} ${m.nom}${isAdmin(m) ? ' · gestionnaire' : ' · lecture seule'}` : '';
+  ui.view='apercu'; ui.activeFamilyId=null;
+  syncTabs();
+  render();
+}
+
+$('#logoutBtn').onclick = () => {
+  session.memberId = null;
+  ui.view='apercu'; ui.activeFamilyId=null;
+  showLogin();
+};
+
+/* ================= NAV ================= */
+function syncTabs(){
+  $$('.tab-btn').forEach(b=>b.classList.toggle('active', b.dataset.view===ui.view));
+  $$('.view').forEach(v=>v.classList.remove('active'));
+  $('#view-'+ui.view).classList.add('active');
+  const canWrite = isAdmin(currentMember());
+  $('#fabAdd').style.display = (ui.view==='cotisations' && ui.activeFamilyId && canWrite) ? 'block' : 'none';
+}
+
+$$('.tab-btn').forEach(btn=>{
+  btn.onclick = () => {
+    ui.view = btn.dataset.view;
+    syncTabs();
+    render();
+  };
+});
+
+/* ================= RENDER ROOT ================= */
+function render(){
+  renderApercu();
+  renderCotisations();
+  renderMembres();
+  renderEvolution();
+  syncTabs();
+}
+
+/* ================= APERCU ================= */
+function famTotal(familyId){
+  const listIds = data.lists.filter(l=>l.familyId===familyId).map(l=>l.id);
+  return data.cotisations.filter(c=>listIds.includes(c.listId) && c.status==='paid').reduce((s,c)=>s+c.amount,0);
+}
+function famMemberCount(familyId){ return data.members.filter(m=>m.familyId===familyId).length; }
+
+function renderApercu(){
+  const el = $('#familyGrid');
+  el.innerHTML = data.families.map(f=>`
+    <div class="family-card" data-fam="${f.id}">
+      <div class="badge">${initials(f.name)}</div>
+      <div class="info">
+        <div class="name"><span class="fname">${escapeHTML(f.name)}</span><span class="edit-ico" data-rename="${f.id}">✎</span></div>
+        <div class="stat">${famMemberCount(f.id)} membre(s) · ${euros(famTotal(f.id))} collectés</div>
+      </div>
+      <div class="chevron">›</div>
+    </div>
+  `).join('');
+  el.querySelectorAll('.family-card').forEach(card=>{
+    card.addEventListener('click', (e)=>{
+      if(e.target.hasAttribute('data-rename')) return;
+      ui.activeFamilyId = card.dataset.fam;
+      ui.listFilter=''; ui.yearFilter=''; ui.monthFilter='';
+      ui.view='cotisations';
+      syncTabs(); render();
+    });
+  });
+  el.querySelectorAll('[data-rename]').forEach(ico=>{
+    ico.onclick = (e) => {
+      e.stopPropagation();
+      const f = data.families.find(f=>f.id===ico.dataset.rename);
+      const name = prompt('Nom de la famille :', f.name);
+      if(name && name.trim()){ f.name = name.trim(); saveData(); render(); }
+    };
+  });
+}
+
+/* ================= COTISATIONS ================= */
+function renderCotisations(){
+  const el = $('#cotisationsInner');
+  if(!ui.activeFamilyId){
+    el.innerHTML = `
+      <h2 class="section-title">Cotisations</h2>
+      <p class="muted" style="margin-bottom:14px;">Choisissez d’abord une famille.</p>
+      <div class="family-grid" id="familyGridInline"></div>
+    `;
+    const grid = $('#familyGridInline');
+    grid.innerHTML = data.families.map(f=>
