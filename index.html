@@ -223,7 +223,7 @@
 <script>
 /* Stockage externe (jsonblob.com) — indépendant de Claude, aucun compte requis pour les visiteurs.
    BLOB_ID doit être renseigné une fois le registre initialisé sur https://jsonblob.com */
-const BLOB_ID = '019fbef9-9fca-7472-a0bd-5065ab7385da';
+const BLOB_ID = '019fbf27-038a-7eb2-9fdb-66495dbcfcfe';
 const API_BASE = 'https://jsonblob.com/api/jsonBlob/';
 const MONTHS = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
 
@@ -467,4 +467,583 @@ function renderCotisations(){
       <div class="family-grid" id="familyGridInline"></div>
     `;
     const grid = $('#familyGridInline');
-    grid.innerHTML = data.families.map(f=>
+    grid.innerHTML = data.families.map(f=>`
+      <div class="family-card" data-fam="${f.id}">
+        <div class="badge">${initials(f.name)}</div>
+        <div class="info"><div class="name">${escapeHTML(f.name)}</div><div class="stat">${famMemberCount(f.id)} membre(s)</div></div>
+        <div class="chevron">›</div>
+      </div>`).join('');
+    grid.querySelectorAll('.family-card').forEach(card=>{
+      card.onclick = () => { ui.activeFamilyId = card.dataset.fam; render(); };
+    });
+    return;
+  }
+
+  const fam = data.families.find(f=>f.id===ui.activeFamilyId);
+  const famLists = data.lists.filter(l=>l.familyId===ui.activeFamilyId);
+  const famCotis = data.cotisations.filter(c=>famLists.some(l=>l.id===c.listId));
+  const canWrite = isAdmin(currentMember());
+
+  const years = Array.from(new Set(famCotis.map(c=>c.date.slice(0,4)))).sort().reverse();
+  if(!years.includes(String(new Date().getFullYear()))) years.unshift(String(new Date().getFullYear()));
+
+  el.innerHTML = `
+    <div class="back-link" id="backToApercu">‹ Toutes les familles</div>
+    <h2 class="section-title">${escapeHTML(fam.name)}</h2>
+    ${canWrite ? '' : '<div class="readonly-badge">👁 Mode lecture seule</div>'}
+    ${canWrite ? '<button class="dashed-btn" id="importBtn" style="margin-bottom:14px;">📥 Importer un fichier (Excel / CSV)</button>' : ''}
+    <div class="filter-bar">
+      <select id="filterList"><option value="">Toutes les listes</option>${famLists.map(l=>`<option value="${l.id}" ${ui.listFilter===l.id?'selected':''}>${escapeHTML(l.name)}</option>`).join('')}</select>
+      <select id="filterYear"><option value="">Toutes années</option>${years.map(y=>`<option value="${y}" ${ui.yearFilter===y?'selected':''}>${y}</option>`).join('')}</select>
+      <select id="filterMonth"><option value="">Tous mois</option>${MONTHS.map((m,i)=>`<option value="${i+1}" ${String(ui.monthFilter)===String(i+1)?'selected':''}>${m}</option>`).join('')}</select>
+    </div>
+    <div id="listsZone"></div>
+  `;
+  $('#backToApercu').onclick = () => { ui.activeFamilyId=null; ui.view='apercu'; syncTabs(); render(); };
+  if(canWrite){ $('#importBtn').onclick = () => openImportSheet(fam.id); }
+  $('#filterList').onchange = e => { ui.listFilter = e.target.value; renderListsZone(fam, famLists, famCotis, canWrite); syncTabs(); };
+  $('#filterYear').onchange = e => { ui.yearFilter = e.target.value; renderListsZone(fam, famLists, famCotis, canWrite); };
+  $('#filterMonth').onchange = e => { ui.monthFilter = e.target.value; renderListsZone(fam, famLists, famCotis, canWrite); };
+
+  renderListsZone(fam, famLists, famCotis, canWrite);
+}
+
+function passesFilter(c){
+  if(ui.yearFilter && c.date.slice(0,4)!==ui.yearFilter) return false;
+  if(ui.monthFilter && String(parseInt(c.date.slice(5,7),10))!==String(ui.monthFilter)) return false;
+  return true;
+}
+
+function renderListsZone(fam, famLists, famCotis, canWrite){
+  const zone = $('#listsZone');
+  let listsToShow = ui.listFilter ? famLists.filter(l=>l.id===ui.listFilter) : famLists;
+
+  if(famLists.length===0){
+    zone.innerHTML = emptyState('📖','Aucune liste pour l’instant', canWrite ? 'Créez une première liste avec le bouton ci-dessous.' : 'Aucune cotisation n’a encore été saisie.');
+    return;
+  }
+
+  let html = '';
+  let anyRow = false;
+  listsToShow.sort((a,b)=> (b.createdAt||'').localeCompare(a.createdAt||'')).forEach(list=>{
+    const rows = famCotis.filter(c=>c.listId===list.id && passesFilter(c)).sort((a,b)=>b.date.localeCompare(a.date));
+    if(rows.length===0) return;
+    anyRow = true;
+    const subtotal = rows.filter(c=>c.status==='paid').reduce((s,c)=>s+c.amount,0);
+    html += `
+      <div class="list-group">
+        <div class="list-group-header"><span class="lname">${escapeHTML(list.name)}</span><span class="ltotal">${euros(subtotal)}</span></div>
+        <div class="ledger">${rows.map(c=>ledgerRowHTML(c, canWrite)).join('')}</div>
+      </div>`;
+  });
+
+  zone.innerHTML = anyRow ? html : emptyState('🔍','Rien à afficher','Aucune cotisation ne correspond à ces filtres.');
+  if(!canWrite) return;
+  zone.querySelectorAll('[data-toggle]').forEach(s=>{
+    s.onclick = () => {
+      const c = data.cotisations.find(c=>c.id===s.dataset.toggle);
+      c.status = c.status==='paid' ? 'pending' : 'paid';
+      saveData(); render();
+    };
+  });
+  zone.querySelectorAll('[data-del]').forEach(b=>{
+    b.onclick = () => {
+      if(confirm('Supprimer cette cotisation ?')){
+        data.cotisations = data.cotisations.filter(c=>c.id!==b.dataset.del);
+        saveData(); render();
+      }
+    };
+  });
+}
+
+function ledgerRowHTML(c, canWrite){
+  const m = data.members.find(m=>m.id===c.memberId);
+  const name = m ? `${m.prenom} ${m.nom}` : 'Membre supprimé';
+  const dateFmt = new Date(c.date).toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'numeric'});
+  return `
+    <div class="ledger-row">
+      <div class="who">${initials(name)}</div>
+      <div class="info"><div class="name">${escapeHTML(name)}</div><div class="meta">${dateFmt}${c.label?' · '+escapeHTML(c.label):''}</div></div>
+      <div class="row-actions">
+        <span class="stamp ${c.status==='paid'?'paid':'pending'} ${canWrite?'':'readonly'}" ${canWrite?`data-toggle="${c.id}"`:''}>${c.status==='paid'?'Payé':'En attente'}</span>
+        <span class="amount">${euros(c.amount)}</span>
+        ${canWrite ? `<button class="del-btn" data-del="${c.id}" title="Supprimer">✕</button>` : ''}
+      </div>
+    </div>`;
+}
+
+function emptyState(glyph,title,sub){
+  return `<div class="empty"><div class="glyph">${glyph}</div><div class="title">${title}</div><div class="muted">${sub}</div></div>`;
+}
+
+/* ================= EVOLUTION ================= */
+const MONTHS_SHORT = ['Jan','Fév','Mar','Avr','Mai','Juin','Juil','Août','Sep','Oct','Nov','Déc'];
+
+function renderEvolution(){
+  const el = $('#evolutionInner');
+  if(!el) return;
+  if(!ui.activeFamilyId){
+    el.innerHTML = `
+      <h2 class="section-title">Évolution</h2>
+      <p class="muted" style="margin-bottom:14px;">Choisissez d’abord une famille.</p>
+      <div class="family-grid" id="familyGridEvo"></div>
+    `;
+    const grid = $('#familyGridEvo');
+    grid.innerHTML = data.families.map(f=>`
+      <div class="family-card" data-fam="${f.id}">
+        <div class="badge">${initials(f.name)}</div>
+        <div class="info"><div class="name">${escapeHTML(f.name)}</div><div class="stat">${famMemberCount(f.id)} membre(s)</div></div>
+        <div class="chevron">›</div>
+      </div>`).join('');
+    grid.querySelectorAll('.family-card').forEach(card=>{
+      card.onclick = () => { ui.activeFamilyId = card.dataset.fam; render(); };
+    });
+    return;
+  }
+
+  const fam = data.families.find(f=>f.id===ui.activeFamilyId);
+  const famLists = data.lists.filter(l=>l.familyId===ui.activeFamilyId);
+  const famCotis = data.cotisations.filter(c=>famLists.some(l=>l.id===c.listId) && c.status==='paid');
+
+  const years = Array.from(new Set(famCotis.map(c=>c.date.slice(0,4)))).sort().reverse();
+  const currentYear = String(new Date().getFullYear());
+  if(!years.includes(currentYear)) years.unshift(currentYear);
+  if(!ui.evoYear || !years.includes(ui.evoYear)) ui.evoYear = years[0];
+
+  el.innerHTML = `
+    <div class="back-link" id="backToApercuEvo">‹ Toutes les familles</div>
+    <h2 class="section-title">Évolution — ${escapeHTML(fam.name)}</h2>
+    <div class="filter-bar">
+      <select id="evoYearSelect">${years.map(y=>`<option value="${y}" ${ui.evoYear===y?'selected':''}>${y}</option>`).join('')}</select>
+    </div>
+    <div id="evoCharts"></div>
+  `;
+  $('#backToApercuEvo').onclick = () => { ui.activeFamilyId=null; ui.view='apercu'; syncTabs(); render(); };
+  $('#evoYearSelect').onchange = e => { ui.evoYear = e.target.value; renderEvoCharts(famLists, famCotis); };
+
+  renderEvoCharts(famLists, famCotis);
+}
+
+function renderEvoCharts(famLists, famCotis){
+  const zone = $('#evoCharts');
+  const yearCotis = famCotis.filter(c=>c.date.slice(0,4)===ui.evoYear);
+
+  // Chart 1 — monthly evolution for the selected year
+  const monthTotals = new Array(12).fill(0);
+  yearCotis.forEach(c=>{ monthTotals[parseInt(c.date.slice(5,7),10)-1] += c.amount; });
+  const hasMonthData = monthTotals.some(v=>v>0);
+
+  // Chart 2 — total per list (selected year)
+  const listTotals = famLists.map(l=>({
+    name: l.name,
+    total: yearCotis.filter(c=>c.listId===l.id).reduce((s,c)=>s+c.amount,0)
+  })).filter(x=>x.total>0).sort((a,b)=>b.total-a.total);
+
+  zone.innerHTML = `
+    <div class="chart-card">
+      <h3>Évolution mensuelle</h3>
+      <div class="chart-sub">Total collecté par mois — ${ui.evoYear}</div>
+      ${hasMonthData ? svgBarChart(MONTHS_SHORT, monthTotals, 'var(--brass)') : '<div class="chart-empty">Aucune cotisation payée cette année-là.</div>'}
+    </div>
+    <div class="chart-card">
+      <h3>Par liste de cotisation</h3>
+      <div class="chart-sub">Total collecté par liste — ${ui.evoYear}</div>
+      ${listTotals.length>0 ? svgBarChart(listTotals.map(x=>truncateLabel(x.name)), listTotals.map(x=>x.total), 'var(--green)') : '<div class="chart-empty">Aucune liste avec des paiements cette année-là.</div>'}
+    </div>
+  `;
+}
+
+function truncateLabel(s){ return s.length>10 ? s.slice(0,9)+'…' : s; }
+
+function svgBarChart(labels, values, color){
+  const w = 480, h = 210, padL=8, padR=8, padT=18, padB=28;
+  const max = Math.max(1, ...values);
+  const innerW = w - padL - padR;
+  const innerH = h - padT - padB;
+  const gap = innerW / labels.length;
+  const barW = Math.min(34, gap*0.55);
+  let bars = '';
+  labels.forEach((lab,i)=>{
+    const val = values[i] || 0;
+    const barH = (val/max) * innerH;
+    const x = padL + i*gap + (gap-barW)/2;
+    const y = padT + (innerH - barH);
+    bars += `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${barW.toFixed(1)}" height="${Math.max(barH,1).toFixed(1)}" rx="3" style="fill:${color}"></rect>`;
+    if(val>0){
+      bars += `<text x="${(x+barW/2).toFixed(1)}" y="${(y-5).toFixed(1)}" font-size="9" text-anchor="middle" style="fill:var(--ink-soft);font-family:'IBM Plex Mono',monospace;">${Math.round(val)}</text>`;
+    }
+    bars += `<text x="${(x+barW/2).toFixed(1)}" y="${h-padB+13}" font-size="9" text-anchor="middle" style="fill:var(--ink-faint);font-family:'IBM Plex Mono',monospace;">${escapeHTML(lab)}</text>`;
+  });
+  bars += `<line x1="${padL}" y1="${padT+innerH}" x2="${w-padR}" y2="${padT+innerH}" style="stroke:var(--paper-line);stroke-width:1;"></line>`;
+  return `<svg viewBox="0 0 ${w} ${h}" style="width:100%;height:auto;display:block;">${bars}</svg>`;
+}
+
+/* ================= IMPORT FICHIER ================= */
+const HEADER_ALIASES = {
+  prenom: ['prenom','prénom','first name','firstname','prenoms'],
+  nom: ['nom','last name','lastname','surname','nom de famille'],
+  fullname: ['nom complet','membre','name','nom et prenom','nom prenom','nom & prenom'],
+  montant: ['montant','amount','somme','montant (eur)','montant eur','montant (€)','montant(€)'],
+  date: ['date'],
+  statut: ['statut','status','etat','état'],
+  motif: ['motif','note','commentaire','description']
+};
+
+function normalizeStr(s){ return (s||'').toString().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim().toLowerCase(); }
+
+function detectColumns(headerRow){
+  const map = {};
+  headerRow.forEach(h=>{
+    const n = normalizeStr(h);
+    for(const key in HEADER_ALIASES){
+      if(HEADER_ALIASES[key].some(a=>normalizeStr(a)===n)){ map[key]=h; }
+    }
+  });
+  return map;
+}
+
+function parseImportRows(rows, famMembers){
+  const matched = [], unmatched = [];
+  if(rows.length===0) return {matched, unmatched};
+  const headers = Object.keys(rows[0]);
+  const colMap = detectColumns(headers);
+  const today = new Date().toISOString().slice(0,10);
+
+  rows.forEach((row, idx)=>{
+    let prenom = colMap.prenom ? String(row[colMap.prenom]||'').trim() : '';
+    let nom = colMap.nom ? String(row[colMap.nom]||'').trim() : '';
+    if((!prenom || !nom) && colMap.fullname){
+      const full = String(row[colMap.fullname]||'').trim();
+      if(full && !prenom && !nom){
+        const parts = full.split(/\s+/);
+        if(parts.length>=2){ prenom = parts[0]; nom = parts.slice(1).join(' '); }
+      }
+    }
+    if(!prenom && !nom) return; // ligne vide, ignorée silencieusement
+
+    const member = famMembers.find(m => normalizeStr(m.prenom)===normalizeStr(prenom) && normalizeStr(m.nom)===normalizeStr(nom))
+      || famMembers.find(m => normalizeStr(m.prenom+' '+m.nom)===normalizeStr(prenom+' '+nom))
+      || famMembers.find(m => normalizeStr(m.nom+' '+m.prenom)===normalizeStr(prenom+' '+nom));
+
+    const amountRaw = colMap.montant ? row[colMap.montant] : '';
+    const amount = parseFloat(String(amountRaw).replace(/[^\d,.\-]/g,'').replace(',','.'));
+
+    if(!member){ unmatched.push({ reason: `${prenom} ${nom} (ligne ${idx+2}) : membre introuvable` }); return; }
+    if(!amount || amount<=0){ unmatched.push({ reason: `${prenom} ${nom} (ligne ${idx+2}) : montant invalide` }); return; }
+
+    let date = today;
+    const dateVal = colMap.date ? String(row[colMap.date]||'').trim() : '';
+    if(dateVal){ const d = new Date(dateVal); if(!isNaN(d.getTime())) date = d.toISOString().slice(0,10); }
+
+    let status = 'paid';
+    const statutVal = colMap.statut ? normalizeStr(String(row[colMap.statut]||'')) : '';
+    if(statutVal && ['attente','pending','non','no','impaye'].some(k=>statutVal.includes(k))) status = 'pending';
+
+    const label = colMap.motif ? String(row[colMap.motif]||'').trim() : '';
+    matched.push({ memberId: member.id, memberName: `${member.prenom} ${member.nom}`, amount, date, status, label });
+  });
+
+  return { matched, unmatched };
+}
+
+function openImportSheet(famId){
+  const famMembers = data.members.filter(m=>m.familyId===famId);
+  const famLists = data.lists.filter(l=>l.familyId===famId);
+  let importListMode = famLists.length>0 ? 'existing' : 'new';
+
+  function renderStep1(){
+    $('#sheetContent').innerHTML = `
+      <h3>Importer un fichier</h3>
+      <p class="muted" style="margin-bottom:14px;">Colonnes attendues : <b>Prénom</b> + <b>Nom</b> (ou <b>Nom complet</b>), <b>Montant</b>, et en option <b>Date</b>, <b>Statut</b>, <b>Motif</b>. La première ligne doit contenir les titres de colonnes. Sans colonne Statut, tout est considéré comme payé.</p>
+      <div class="field"><label>Liste de destination</label>
+        <div class="toggle-group">
+          <button type="button" id="im_mode_existing" class="${importListMode==='existing'?'active':''}" ${famLists.length===0?'disabled':''}>Liste existante</button>
+          <button type="button" id="im_mode_new" class="${importListMode==='new'?'active':''}">Nouvelle liste</button>
+        </div>
+        <div id="im_listFieldZone"></div>
+      </div>
+      <div class="field"><label>Fichier (.csv, .xlsx, .xls)</label>
+        <input type="file" id="importFile" accept=".csv,.xlsx,.xls">
+      </div>
+      <div class="sheet-actions">
+        <button class="btn-secondary" id="cancelSheet">Annuler</button>
+        <button class="btn-primary" id="analyzeBtn">Analyser le fichier</button>
+      </div>
+    `;
+    function renderListField(){
+      const zone = $('#im_listFieldZone');
+      zone.innerHTML = importListMode==='existing'
+        ? `<select id="im_list">${famLists.map(l=>`<option value="${l.id}">${escapeHTML(l.name)}</option>`).join('')}</select>`
+        : `<input type="text" id="im_newlist" placeholder="ex : Cotisation Février 2026">`;
+    }
+    renderListField();
+    $('#im_mode_existing').onclick = () => { if($('#im_mode_existing').disabled) return; importListMode='existing'; $('#im_mode_existing').classList.add('active'); $('#im_mode_new').classList.remove('active'); renderListField(); };
+    $('#im_mode_new').onclick = () => { importListMode='new'; $('#im_mode_new').classList.add('active'); $('#im_mode_existing').classList.remove('active'); renderListField(); };
+    $('#cancelSheet').onclick = closeSheet;
+    $('#analyzeBtn').onclick = () => {
+      const fileInput = $('#importFile');
+      if(!fileInput.files || fileInput.files.length===0){ showToast('Choisissez un fichier.'); return; }
+      let listName = null, listId = null;
+      if(importListMode==='new'){
+        listName = $('#im_newlist').value.trim();
+        if(!listName){ showToast('Nommez la nouvelle liste.'); return; }
+      } else {
+        listId = $('#im_list').value;
+      }
+      const file = fileInput.files[0];
+      const isCSV = /\.csv$/i.test(file.name);
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try{
+          const wb = isCSV ? XLSX.read(e.target.result, {type:'string'}) : XLSX.read(e.target.result, {type:'array', cellDates:true});
+          const ws = wb.Sheets[wb.SheetNames[0]];
+          const rows = XLSX.utils.sheet_to_json(ws, {defval:'', raw:false, dateNF:'yyyy-mm-dd'});
+          const result = parseImportRows(rows, famMembers);
+          renderPreview(result, importListMode, listName, listId);
+        }catch(err){
+          console.error(err);
+          showToast('Impossible de lire ce fichier. Vérifiez le format.');
+        }
+      };
+      if(isCSV) reader.readAsText(file); else reader.readAsArrayBuffer(file);
+    };
+  }
+
+  function renderPreview(result, mode, listName, listId){
+    const { matched, unmatched } = result;
+    const total = matched.reduce((s,r)=>s+r.amount,0);
+    $('#sheetContent').innerHTML = `
+      <h3>Aperçu de l’import</h3>
+      <p class="muted" style="margin-bottom:10px;">${matched.length} ligne(s) reconnue(s) — ${euros(total)} au total.${unmatched.length>0 ? ` ${unmatched.length} ligne(s) ignorée(s).` : ''}</p>
+      <div class="ledger" style="margin-bottom:12px; max-height:240px; overflow-y:auto;">
+        ${matched.slice(0,50).map(r=>`
+          <div class="ledger-row">
+            <div class="who">${initials(r.memberName)}</div>
+            <div class="info"><div class="name">${escapeHTML(r.memberName)}</div><div class="meta">${escapeHTML(r.date)}${r.label?' · '+escapeHTML(r.label):''}</div></div>
+            <div class="row-actions">
+              <span class="stamp ${r.status==='paid'?'paid':'pending'} readonly">${r.status==='paid'?'Payé':'En attente'}</span>
+              <span class="amount">${euros(r.amount)}</span>
+            </div>
+          </div>`).join('')}
+      </div>
+      ${matched.length>50 ? `<p class="muted">…et ${matched.length-50} de plus.</p>` : ''}
+      ${unmatched.length>0 ? `<p class="muted" style="color:var(--rouge);">Ignorés : ${unmatched.slice(0,8).map(u=>escapeHTML(u.reason)).join(' · ')}${unmatched.length>8?' …':''}</p>` : ''}
+      <div class="sheet-actions">
+        <button class="btn-secondary" id="backBtn">Retour</button>
+        <button class="btn-primary" id="confirmImportBtn" ${matched.length===0?'disabled':''}>Importer ${matched.length} cotisation(s)</button>
+      </div>
+    `;
+    $('#backBtn').onclick = renderStep1;
+    if(matched.length>0){
+      $('#confirmImportBtn').onclick = () => {
+        let finalListId = listId;
+        if(mode==='new'){
+          const list = { id: uid(), familyId: famId, name: listName, createdAt: new Date().toISOString().slice(0,10) };
+          data.lists.push(list);
+          finalListId = list.id;
+        }
+        matched.forEach(r=>{
+          data.cotisations.push({ id: uid(), listId: finalListId, memberId: r.memberId, amount: r.amount, date: r.date, label: r.label, status: r.status });
+        });
+        saveData(); render(); closeSheet();
+        showToast(`${matched.length} cotisation(s) importée(s).`);
+      };
+    }
+  }
+
+  renderStep1();
+  openSheet();
+}
+
+/* ================= ADD COTISATION SHEET ================= */
+let listMode = 'existing';
+
+function openAddCotisationSheet(){
+  if(!isAdmin(currentMember())){ showToast('Seuls AGBOKOU Daniel et AMOUZOU Prosper peuvent saisir des cotisations.'); return; }
+  if(!ui.activeFamilyId){ showToast('Choisissez une famille d’abord.'); return; }
+  const famId = ui.activeFamilyId;
+  const famMembers = data.members.filter(m=>m.familyId===famId);
+  const famLists = data.lists.filter(l=>l.familyId===famId);
+  if(famMembers.length===0){ showToast('Aucun membre dans cette famille pour l’instant.'); return; }
+  listMode = famLists.length>0 ? 'existing' : 'new';
+  const today = new Date().toISOString().slice(0,10);
+
+  $('#sheetContent').innerHTML = `
+    <h3>Nouvelle cotisation</h3>
+    <div class="field"><label>Liste</label>
+      <div class="toggle-group">
+        <button type="button" id="mode_existing" class="${listMode==='existing'?'active':''}" ${famLists.length===0?'disabled':''}>Liste existante</button>
+        <button type="button" id="mode_new" class="${listMode==='new'?'active':''}">Nouvelle liste</button>
+      </div>
+      <div id="listFieldZone"></div>
+    </div>
+    <div class="field"><label>Membre</label>
+      <select id="f_member">${famMembers.map(m=>`<option value="${m.id}">${escapeHTML(m.prenom+' '+m.nom)}</option>`).join('')}</select>
+    </div>
+    <div class="field"><label>Montant (€)</label><input type="number" id="f_amount" inputmode="decimal" step="0.01" min="0" placeholder="0"></div>
+    <div class="field"><label>Date</label><input type="date" id="f_date" value="${today}"></div>
+    <div class="field"><label>Note (optionnel)</label><input type="text" id="f_label" placeholder="ex : versement en espèces"></div>
+    <div class="field"><label>Statut</label>
+      <select id="f_status"><option value="paid">Payé</option><option value="pending">En attente</option></select>
+    </div>
+    <div class="sheet-actions">
+      <button class="btn-secondary" id="cancelSheet">Annuler</button>
+      <button class="btn-primary" id="saveSheet">Enregistrer</button>
+    </div>
+  `;
+  function renderListField(){
+    const zone = $('#listFieldZone');
+    if(listMode==='existing'){
+      zone.innerHTML = `<select id="f_list">${famLists.map(l=>`<option value="${l.id}">${escapeHTML(l.name)}</option>`).join('')}</select>`;
+    } else {
+      zone.innerHTML = `<input type="text" id="f_newlist" placeholder="ex : Cotisation Février 2026">`;
+    }
+  }
+  renderListField();
+  $('#mode_existing').onclick = () => { if($('#mode_existing').disabled) return; listMode='existing'; $('#mode_existing').classList.add('active'); $('#mode_new').classList.remove('active'); renderListField(); };
+  $('#mode_new').onclick = () => { listMode='new'; $('#mode_new').classList.add('active'); $('#mode_existing').classList.remove('active'); renderListField(); };
+  $('#cancelSheet').onclick = closeSheet;
+  $('#saveSheet').onclick = () => {
+    const amount = parseFloat($('#f_amount').value);
+    if(!amount || amount<=0){ showToast('Indiquez un montant valide.'); return; }
+    let listId;
+    if(listMode==='new'){
+      const name = $('#f_newlist').value.trim();
+      if(!name){ showToast('Nommez la nouvelle liste.'); return; }
+      const list = { id: uid(), familyId: famId, name, createdAt: today };
+      data.lists.push(list);
+      listId = list.id;
+    } else {
+      listId = $('#f_list').value;
+    }
+    data.cotisations.push({
+      id: uid(), listId, memberId: $('#f_member').value, amount,
+      date: $('#f_date').value || today, label: $('#f_label').value.trim(), status: $('#f_status').value
+    });
+    saveData(); render(); closeSheet();
+    showToast('Cotisation enregistrée.');
+  };
+  openSheet();
+}
+
+/* ================= MEMBRES ================= */
+function renderMembres(){
+  const el = $('#membersList');
+  let html = '';
+  data.families.forEach(f=>{
+    const mem = data.members.filter(m=>m.familyId===f.id);
+    html += `<div class="fam-tag">${escapeHTML(f.name)}</div>`;
+    if(mem.length===0){
+      html += `<div class="muted" style="margin-bottom:10px;">Aucun membre.</div>`;
+    } else {
+      mem.forEach(m=>{
+        html += `
+          <div class="member-card">
+            <div class="who">${initials(m.prenom+' '+m.nom)}</div>
+            <div class="info"><div class="name">${escapeHTML(m.prenom+' '+m.nom)}</div></div>
+            <div class="acts">
+              <button class="del-btn" data-edit="${m.id}" title="Modifier">✎</button>
+              <button class="del-btn" data-del="${m.id}" title="Retirer">✕</button>
+            </div>
+          </div>`;
+      });
+    }
+  });
+  el.innerHTML = html;
+  el.querySelectorAll('[data-del]').forEach(b=>{
+    b.onclick = () => requestOwnCode(b.dataset.del, () => {
+      data.members = data.members.filter(m=>m.id!==b.dataset.del);
+      saveData(); render();
+      showToast('Membre retiré.');
+    });
+  });
+  el.querySelectorAll('[data-edit]').forEach(b=>{
+    b.onclick = () => requestOwnCode(b.dataset.edit, () => openEditMemberSheet(b.dataset.edit));
+  });
+  addMemberButton(el);
+}
+
+function requestOwnCode(memberId, onSuccess){
+  const m = data.members.find(m=>m.id===memberId);
+  const entered = prompt(`Code personnel de ${m.prenom} ${m.nom} :`);
+  if(entered===null) return;
+  if(entered !== m.code){ showToast('Code incorrect.'); return; }
+  onSuccess();
+}
+
+function openEditMemberSheet(memberId){
+  const m = data.members.find(m=>m.id===memberId);
+  $('#sheetContent').innerHTML = `
+    <h3>Modifier la fiche</h3>
+    <div class="field"><label>Prénom</label><input type="text" id="e_prenom" value="${escapeHTML(m.prenom)}"></div>
+    <div class="field"><label>Nom</label><input type="text" id="e_nom" value="${escapeHTML(m.nom)}"></div>
+    <div class="field"><label>Famille</label>
+      <select id="e_family">${data.families.map(f=>`<option value="${f.id}" ${f.id===m.familyId?'selected':''}>${escapeHTML(f.name)}</option>`).join('')}</select>
+    </div>
+    <div class="field"><label>Code personnel</label><input type="text" id="e_code" value="${escapeHTML(m.code)}"></div>
+    <div class="sheet-actions">
+      <button class="btn-secondary" id="cancelSheet">Annuler</button>
+      <button class="btn-primary" id="saveSheet">Enregistrer</button>
+    </div>
+  `;
+  $('#cancelSheet').onclick = closeSheet;
+  $('#saveSheet').onclick = () => {
+    const newCode = $('#e_code').value.trim();
+    if(data.members.some(x=>x.code===newCode && x.id!==m.id)){ showToast('Ce code est déjà pris.'); return; }
+    m.prenom = $('#e_prenom').value.trim() || m.prenom;
+    m.nom = $('#e_nom').value.trim() || m.nom;
+    m.familyId = $('#e_family').value;
+    m.code = newCode || m.code;
+    saveData(); render(); closeSheet();
+    showToast('Fiche mise à jour.');
+  };
+  openSheet();
+}
+
+function addMemberButton(el){
+  const btn = document.createElement('button');
+  btn.className = 'dashed-btn';
+  btn.textContent = '＋ Ajouter un membre';
+  btn.onclick = openAddMemberSheet;
+  el.appendChild(btn);
+}
+
+function openAddMemberSheet(){
+  $('#sheetContent').innerHTML = `
+    <h3>Ajouter un membre</h3>
+    <div class="field"><label>Prénom</label><input type="text" id="n_prenom" placeholder="ex : Awa"></div>
+    <div class="field"><label>Nom</label><input type="text" id="n_nom" placeholder="ex : Diallo"></div>
+    <div class="field"><label>Famille</label>
+      <select id="n_family">${data.families.map(f=>`<option value="${f.id}" ${f.id===ui.activeFamilyId?'selected':''}>${escapeHTML(f.name)}</option>`).join('')}</select>
+    </div>
+    <div class="field"><label>Code personnel (choisi par la personne)</label><input type="text" id="n_code" placeholder="ex : 4821"></div>
+    <div class="sheet-actions">
+      <button class="btn-secondary" id="cancelSheet">Annuler</button>
+      <button class="btn-primary" id="saveSheet">Ajouter</button>
+    </div>
+  `;
+  $('#cancelSheet').onclick = closeSheet;
+  $('#saveSheet').onclick = () => {
+    const prenom = $('#n_prenom').value.trim();
+    const nom = $('#n_nom').value.trim();
+    const code = $('#n_code').value.trim();
+    if(!prenom || !nom){ showToast('Indiquez le nom et le prénom.'); return; }
+    if(!code){ showToast('Choisissez un code personnel.'); return; }
+    if(data.members.some(m=>m.code===code)){ showToast('Ce code est déjà utilisé.'); return; }
+    data.members.push({ id: uid(), prenom, nom, code, familyId: $('#n_family').value });
+    saveData(); render(); closeSheet();
+    showToast('Membre ajouté.');
+  };
+  openSheet();
+}
+
+/* ================= SHEET HELPERS ================= */
+function openSheet(){ $('#overlay').classList.add('active'); }
+function closeSheet(){ $('#overlay').classList.remove('active'); }
+$('#overlay').addEventListener('click', e=>{ if(e.target.id==='overlay') closeSheet(); });
+$('#fabBtn').onclick = openAddCotisationSheet;
+
+loadData();
+</script>
+</body>
+</html>
