@@ -10,7 +10,7 @@
 <style>
   :root{
     --paper:#EFE7D8;
-    --paper-light:#FAF6EC;
+    --paper-light:#FFFFFF;
     --paper-line: rgba(30,42,56,0.08);
     --ink:#1E2A38;
     --ink-soft:#5B6B7A;
@@ -26,12 +26,19 @@
   }
   *{box-sizing:border-box;}
   body{ margin:0; font-family:'Inter',sans-serif; background: var(--paper); color: var(--ink); -webkit-font-smoothing:antialiased; }
-  .app{ max-width:520px; margin:0 auto; min-height:100vh; background: var(--paper); display:flex; flex-direction:column; position:relative; }
+  body::before{
+    content:'';
+    position:fixed; inset:0; z-index:-1;
+    background-image: url('background.jpg');
+    background-size: cover;
+    background-position: center top;
+  }
+  .app{ width:100%; min-height:100vh; background: rgba(255,255,255,0.45); display:flex; flex-direction:column; position:relative; }
 
   /* ---------- LOGIN ---------- */
   .login-screen{
     min-height:100vh; display:flex; flex-direction:column; justify-content:center;
-    padding: 32px 26px; background: var(--ink); color: var(--paper-light);
+    padding: 32px 26px; background: rgba(30,42,56,0.82); color: var(--paper-light);
   }
   .login-screen .eyebrow{ font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:var(--brass); margin-bottom:8px; }
   .login-screen h1{ font-family:'Fraunces',serif; font-weight:600; font-size:30px; margin:0 0 6px; }
@@ -46,15 +53,16 @@
   .login-error.show{ display:block; }
 
   /* ---------- HEADER ---------- */
-  header.cover{ padding: 22px 20px 16px; background: var(--ink); color: var(--paper-light); position:relative; border-bottom: 4px double var(--brass); }
-  header.cover .eyebrow{ font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color: var(--brass); margin-bottom:6px; display:flex; justify-content:space-between; align-items:center; }
-  header.cover .eyebrow span.logout{ text-transform:none; letter-spacing:0; cursor:pointer; color:#C9D2DA; }
+  header.cover{ padding: 22px 20px 16px; background: var(--ink); color: var(--paper-light); position:relative; border-bottom: 4px double var(--brass); text-align:center; }
+  header.cover .logout{ position:absolute; top:20px; right:18px; font-family:'Inter',sans-serif; font-size:12px; text-transform:none; letter-spacing:0; cursor:pointer; color:#C9D2DA; }
+  header.cover .eyebrow{ font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color: var(--brass); margin-bottom:6px; }
   header.cover h1{ font-family:'Fraunces',serif; font-weight:600; font-size:25px; margin:0; letter-spacing:-0.01em; }
   header.cover .userline{ font-family:'Fraunces',serif; font-style:italic; font-size:14px; color:#C9D2DA; margin-top:4px; }
 
-  nav.tabs{ display:flex; padding: 0 20px; gap: 4px; border-bottom: 1px solid var(--paper-line); background:var(--paper); }
-  nav.tabs button{ flex:1; background:none; border:none; font-family:'Inter',sans-serif; font-weight:600; font-size:13px; color: var(--ink-faint); padding: 10px 4px 12px; cursor:pointer; border-bottom: 3px solid transparent; transition: color .15s; }
+  nav.tabs{ display:flex; padding: 0 12px; gap: 2px; border-bottom: 1px solid var(--paper-line); background:var(--paper); overflow-x:auto; -webkit-overflow-scrolling:touch; }
+  nav.tabs button{ flex:0 0 auto; white-space:nowrap; background:none; border:none; font-family:'Inter',sans-serif; font-weight:600; font-size:12.5px; color: var(--ink-faint); padding: 10px 12px 12px; cursor:pointer; border-bottom: 3px solid transparent; transition: color .15s; }
   nav.tabs button.active{ color: var(--ink); border-bottom-color: var(--brass); }
+  .tab-badge{ display:inline-block; background:var(--rouge); color:#fff; font-size:10px; font-weight:700; border-radius:10px; padding:1px 6px; margin-left:4px; vertical-align:2px; }
 
   main{ flex:1; padding: 18px 20px 100px; }
   section.view{ display:none; }
@@ -67,6 +75,16 @@
 
   /* ---------- FAMILY CARDS ---------- */
   .family-grid{ display:flex; flex-direction:column; gap:10px; }
+  .family-select-row{ display:flex; gap:8px; align-items:center; }
+  .family-select-row select{
+    flex:1; font-family:'Inter',sans-serif; font-weight:600; font-size:14.5px; color: var(--ink);
+    padding: 13px 14px; border-radius: var(--radius); border: 1.5px solid var(--paper-line);
+    background: var(--paper-light); box-shadow: var(--shadow); cursor:pointer;
+  }
+  .family-select-row .edit-ico-btn{
+    flex-shrink:0; width:44px; height:44px; border-radius: var(--radius); border: 1.5px solid var(--paper-line);
+    background: var(--paper-light); box-shadow: var(--shadow); color: var(--ink-faint); cursor:pointer; font-size:15px;
+  }
   .family-card{ background: var(--paper-light); border-radius: var(--radius); box-shadow: var(--shadow); padding: 16px; display:flex; align-items:center; gap:14px; cursor:pointer; border: 1.5px solid transparent; transition: border-color .15s; }
   .family-card:hover{ border-color: var(--brass); }
   .family-card .badge{ width:46px;height:46px;border-radius:50%; background: var(--green-soft); color:var(--green); display:flex;align-items:center;justify-content:center; font-family:'Fraunces',serif; font-weight:600; font-size:17px; flex-shrink:0; }
@@ -160,6 +178,25 @@
   .chart-card h3{ font-family:'Fraunces',serif; font-weight:600; font-size:14.5px; margin: 0 0 4px; }
   .chart-card .chart-sub{ font-size:11.5px; color:var(--ink-faint); margin-bottom:10px; font-family:'IBM Plex Mono',monospace; }
   .chart-empty{ text-align:center; padding:24px 10px; color:var(--ink-faint); font-size:13px; }
+
+  /* ---------- ARCHIVES ---------- */
+  .event-card{ background: var(--paper-light); border-radius: var(--radius); box-shadow: var(--shadow); padding: 14px; margin-bottom: 14px; }
+  .event-card .event-head{ display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px; }
+  .event-card .event-name{ font-family:'Fraunces',serif; font-weight:600; font-size:15.5px; }
+  .event-card .event-date{ font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--ink-faint); margin-top:2px; }
+  .photo-grid{ display:grid; grid-template-columns: repeat(auto-fill, minmax(84px,1fr)); gap:6px; margin-bottom:10px; }
+  .photo-grid .photo-thumb{ position:relative; aspect-ratio:1/1; border-radius:8px; overflow:hidden; background:var(--paper); }
+  .photo-grid .photo-thumb img{ width:100%; height:100%; object-fit:cover; display:block; cursor:pointer; }
+  .photo-grid .photo-thumb .photo-del{ position:absolute; top:3px; right:3px; width:20px; height:20px; border-radius:50%; background:rgba(30,42,56,0.65); color:#fff; border:none; font-size:11px; cursor:pointer; line-height:1; }
+  .lightbox{ position:fixed; inset:0; background:rgba(10,14,18,0.92); display:none; align-items:center; justify-content:center; z-index:60; padding:20px; }
+  .lightbox.active{ display:flex; }
+  .lightbox img{ max-width:100%; max-height:90vh; border-radius:8px; }
+  .lightbox .lightbox-close{ position:absolute; top:18px; right:18px; color:#fff; font-size:22px; background:none; border:none; cursor:pointer; }
+
+  /* ---------- SUGGESTIONS ---------- */
+  .suggestion-card{ background: var(--paper-light); border-radius: var(--radius); box-shadow: var(--shadow); padding: 13px 14px; margin-bottom: 8px; }
+  .suggestion-card .sug-meta{ font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--ink-faint); margin-bottom:6px; }
+  .suggestion-card .sug-text{ font-size:14px; line-height:1.5; white-space:pre-wrap; }
 </style>
 </head>
 <body>
@@ -179,16 +216,20 @@
   <!-- APP SHELL -->
   <div id="appShell" style="display:none;">
     <header class="cover">
-      <div class="eyebrow"><span>Caisse familiale</span><span class="logout" id="logoutBtn">Déconnexion</span></div>
+      <span class="logout" id="logoutBtn">Déconnexion</span>
+      <div class="eyebrow">Caisse familiale</div>
       <h1>Le Registre</h1>
       <div class="userline" id="userline"></div>
     </header>
 
     <nav class="tabs">
-      <button class="tab-btn active" data-view="apercu">Aperçu</button>
+      <button class="tab-btn active" data-view="apercu">Ma famille</button>
       <button class="tab-btn" data-view="cotisations">Cotisations</button>
       <button class="tab-btn" data-view="membres">Membres</button>
       <button class="tab-btn" data-view="evolution">Évolution</button>
+      <button class="tab-btn" data-view="archives">Archives</button>
+      <button class="tab-btn" data-view="suggestions">Suggestions</button>
+      <button class="tab-btn" data-view="boite" id="boiteTabBtn" style="display:none;">Boîte<span class="tab-badge" id="boiteBadge" style="display:none;"></span></button>
     </nav>
 
     <main>
@@ -209,6 +250,18 @@
       <section class="view" id="view-evolution">
         <div id="evolutionInner"></div>
       </section>
+
+      <section class="view" id="view-archives">
+        <div id="archivesInner"></div>
+      </section>
+
+      <section class="view" id="view-suggestions">
+        <div id="suggestionsInner"></div>
+      </section>
+
+      <section class="view" id="view-boite">
+        <div id="boiteInner"></div>
+      </section>
     </main>
 
     <div class="fab" id="fabAdd" style="display:none;">
@@ -217,6 +270,7 @@
   </div>
 
   <div class="overlay" id="overlay"><div class="sheet" id="sheetContent"></div></div>
+  <div class="lightbox" id="lightbox"><button class="lightbox-close" id="lightboxClose">✕</button><img id="lightboxImg" src="" alt=""></div>
   <div class="toast" id="toast"></div>
 </div>
 
@@ -227,9 +281,9 @@ const BLOB_ID = '019fbf27-038a-7eb2-9fdb-66495dbcfcfe';
 const API_BASE = 'https://jsonblob.com/api/jsonBlob/';
 const MONTHS = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
 
-let data = { families: [], members: [], lists: [], cotisations: [] };
+let data = { families: [], members: [], lists: [], cotisations: [], archives: [], suggestions: [] };
 let session = { memberId: null };
-let ui = { view:'apercu', activeFamilyId:null, listFilter:'', yearFilter:'', monthFilter:'', evoYear:'' };
+let ui = { view:'apercu', activeFamilyId:null, listFilter:'', yearFilter:'', monthFilter:'', evoYear:'', membreFilter:'all', archiveFilter:'all' };
 
 const $ = sel => document.querySelector(sel);
 const $$ = sel => Array.from(document.querySelectorAll(sel));
@@ -248,7 +302,9 @@ function defaultData(){
     ],
     members: [],
     lists: [],
-    cotisations: []
+    cotisations: [],
+    archives: [],
+    suggestions: []
   };
 }
 
@@ -349,7 +405,7 @@ function renderSignupForm(){
     <div class="field"><label>Prénom</label><input type="text" id="s_prenom" placeholder="ex : Awa"></div>
     <div class="field"><label>Nom</label><input type="text" id="s_nom" placeholder="ex : Diallo"></div>
     <div class="field"><label>Famille</label>
-      <select id="s_family">${data.families.map(f=>`<option value="${f.id}">${escapeHTML(f.name)}</option>`).join('')}</select>
+      <select id="s_family">${[{id:'all',name:'Tout'}, ...data.families].map(f=>`<option value="${f.id}">${escapeHTML(f.name)}</option>`).join('')}</select>
     </div>
     <div class="field"><label>Choisissez votre code personnel</label><input type="text" id="s_code" placeholder="ex : 4821">
       <small class="hint">Ce code vous servira à vous connecter et à protéger votre fiche. Gardez-le pour vous.</small>
@@ -382,6 +438,7 @@ function enterApp(){
   $('#appShell').style.display='block';
   const m = data.members.find(m=>m.id===session.memberId);
   $('#userline').textContent = m ? `Connecté(e) : ${m.prenom} ${m.nom}${isAdmin(m) ? ' · gestionnaire' : ' · lecture seule'}` : '';
+  $('#boiteTabBtn').style.display = isAdmin(m) ? '' : 'none';
   ui.view='apercu'; ui.activeFamilyId=null;
   syncTabs();
   render();
@@ -398,7 +455,7 @@ function syncTabs(){
   $$('.tab-btn').forEach(b=>b.classList.toggle('active', b.dataset.view===ui.view));
   $$('.view').forEach(v=>v.classList.remove('active'));
   $('#view-'+ui.view).classList.add('active');
-  const canWrite = isAdmin(currentMember());
+  const canWrite = isAdmin(currentMember()) && ui.activeFamilyId !== 'all';
   $('#fabAdd').style.display = (ui.view==='cotisations' && ui.activeFamilyId && canWrite) ? 'block' : 'none';
 }
 
@@ -416,45 +473,52 @@ function render(){
   renderCotisations();
   renderMembres();
   renderEvolution();
+  renderArchives();
+  renderSuggestions();
+  renderBoite();
   syncTabs();
 }
 
 /* ================= APERCU ================= */
 function famTotal(familyId){
+  if(familyId==='all'){
+    return data.cotisations.filter(c=>c.status==='paid').reduce((s,c)=>s+c.amount,0);
+  }
   const listIds = data.lists.filter(l=>l.familyId===familyId).map(l=>l.id);
   return data.cotisations.filter(c=>listIds.includes(c.listId) && c.status==='paid').reduce((s,c)=>s+c.amount,0);
 }
-function famMemberCount(familyId){ return data.members.filter(m=>m.familyId===familyId).length; }
+function famMemberCount(familyId){
+  if(familyId==='all') return data.members.length;
+  return data.members.filter(m=>m.familyId===familyId).length;
+}
 
 function renderApercu(){
   const el = $('#familyGrid');
-  el.innerHTML = data.families.map(f=>`
-    <div class="family-card" data-fam="${f.id}">
-      <div class="badge">${initials(f.name)}</div>
-      <div class="info">
-        <div class="name"><span class="fname">${escapeHTML(f.name)}</span><span class="edit-ico" data-rename="${f.id}">✎</span></div>
-        <div class="stat">${famMemberCount(f.id)} membre(s) · ${euros(famTotal(f.id))} collectés</div>
-      </div>
-      <div class="chevron">›</div>
+  const options = [{id:'all', name:'Tout'}, ...data.families];
+  el.innerHTML = `
+    <div class="family-select-row">
+      <select id="apercuFamilySelect">
+        <option value="" disabled selected>Choisir une famille…</option>
+        ${options.map(f=>`<option value="${f.id}">${escapeHTML(f.name)}</option>`).join('')}
+      </select>
+      <button class="edit-ico-btn" id="apercuRenameBtn" title="Renommer la famille sélectionnée">✎</button>
     </div>
-  `).join('');
-  el.querySelectorAll('.family-card').forEach(card=>{
-    card.addEventListener('click', (e)=>{
-      if(e.target.hasAttribute('data-rename')) return;
-      ui.activeFamilyId = card.dataset.fam;
-      ui.listFilter=''; ui.yearFilter=''; ui.monthFilter='';
-      ui.view='cotisations';
-      syncTabs(); render();
-    });
-  });
-  el.querySelectorAll('[data-rename]').forEach(ico=>{
-    ico.onclick = (e) => {
-      e.stopPropagation();
-      const f = data.families.find(f=>f.id===ico.dataset.rename);
-      const name = prompt('Nom de la famille :', f.name);
-      if(name && name.trim()){ f.name = name.trim(); saveData(); render(); }
-    };
-  });
+  `;
+  $('#apercuFamilySelect').onchange = e => {
+    const val = e.target.value;
+    if(!val) return;
+    ui.activeFamilyId = val;
+    ui.listFilter=''; ui.yearFilter=''; ui.monthFilter='';
+    ui.view='cotisations';
+    syncTabs(); render();
+  };
+  $('#apercuRenameBtn').onclick = () => {
+    const id = $('#apercuFamilySelect').value;
+    if(!id || id==='all'){ showToast('Choisissez d’abord une famille précise (pas "Tout") dans le menu.'); return; }
+    const f = data.families.find(f=>f.id===id);
+    const name = prompt('Nom de la famille :', f.name);
+    if(name && name.trim()){ f.name = name.trim(); saveData(); render(); }
+  };
 }
 
 /* ================= COTISATIONS ================= */
@@ -467,22 +531,23 @@ function renderCotisations(){
       <div class="family-grid" id="familyGridInline"></div>
     `;
     const grid = $('#familyGridInline');
-    grid.innerHTML = data.families.map(f=>`
-      <div class="family-card" data-fam="${f.id}">
-        <div class="badge">${initials(f.name)}</div>
-        <div class="info"><div class="name">${escapeHTML(f.name)}</div><div class="stat">${famMemberCount(f.id)} membre(s)</div></div>
-        <div class="chevron">›</div>
-      </div>`).join('');
-    grid.querySelectorAll('.family-card').forEach(card=>{
-      card.onclick = () => { ui.activeFamilyId = card.dataset.fam; render(); };
-    });
+    grid.innerHTML = `
+      <div class="family-select-row">
+        <select id="cotisFamilySelect">
+          <option value="" disabled selected>Choisir une famille…</option>
+          ${[{id:'all',name:'Tout'}, ...data.families].map(f=>`<option value="${f.id}">${escapeHTML(f.name)}</option>`).join('')}
+        </select>
+      </div>
+    `;
+    $('#cotisFamilySelect').onchange = e => { if(!e.target.value) return; ui.activeFamilyId = e.target.value; render(); };
     return;
   }
 
-  const fam = data.families.find(f=>f.id===ui.activeFamilyId);
-  const famLists = data.lists.filter(l=>l.familyId===ui.activeFamilyId);
+  const isAll = ui.activeFamilyId === 'all';
+  const fam = isAll ? {id:'all', name:'Tout'} : data.families.find(f=>f.id===ui.activeFamilyId);
+  const famLists = isAll ? data.lists : data.lists.filter(l=>l.familyId===ui.activeFamilyId);
   const famCotis = data.cotisations.filter(c=>famLists.some(l=>l.id===c.listId));
-  const canWrite = isAdmin(currentMember());
+  const canWrite = isAdmin(currentMember()) && !isAll;
 
   const years = Array.from(new Set(famCotis.map(c=>c.date.slice(0,4)))).sort().reverse();
   if(!years.includes(String(new Date().getFullYear()))) years.unshift(String(new Date().getFullYear()));
@@ -490,7 +555,7 @@ function renderCotisations(){
   el.innerHTML = `
     <div class="back-link" id="backToApercu">‹ Toutes les familles</div>
     <h2 class="section-title">${escapeHTML(fam.name)}</h2>
-    ${canWrite ? '' : '<div class="readonly-badge">👁 Mode lecture seule</div>'}
+    ${canWrite ? '' : `<div class="readonly-badge">👁 ${isAll ? 'Vue agrégée en lecture seule — retournez sur une famille pour saisir' : 'Mode lecture seule'}</div>`}
     ${canWrite ? '<button class="dashed-btn" id="importBtn" style="margin-bottom:14px;">📥 Importer un fichier (Excel / CSV)</button>' : ''}
     <div class="filter-bar">
       <select id="filterList"><option value="">Toutes les listes</option>${famLists.map(l=>`<option value="${l.id}" ${ui.listFilter===l.id?'selected':''}>${escapeHTML(l.name)}</option>`).join('')}</select>
@@ -589,20 +654,20 @@ function renderEvolution(){
       <div class="family-grid" id="familyGridEvo"></div>
     `;
     const grid = $('#familyGridEvo');
-    grid.innerHTML = data.families.map(f=>`
-      <div class="family-card" data-fam="${f.id}">
-        <div class="badge">${initials(f.name)}</div>
-        <div class="info"><div class="name">${escapeHTML(f.name)}</div><div class="stat">${famMemberCount(f.id)} membre(s)</div></div>
-        <div class="chevron">›</div>
-      </div>`).join('');
-    grid.querySelectorAll('.family-card').forEach(card=>{
-      card.onclick = () => { ui.activeFamilyId = card.dataset.fam; render(); };
-    });
+    grid.innerHTML = `
+      <div class="family-select-row">
+        <select id="evoFamilySelect">
+          <option value="" disabled selected>Choisir une famille…</option>
+          ${[{id:'all',name:'Tout'}, ...data.families].map(f=>`<option value="${f.id}">${escapeHTML(f.name)}</option>`).join('')}
+        </select>
+      </div>
+    `;
+    $('#evoFamilySelect').onchange = e => { if(!e.target.value) return; ui.activeFamilyId = e.target.value; render(); };
     return;
   }
 
-  const fam = data.families.find(f=>f.id===ui.activeFamilyId);
-  const famLists = data.lists.filter(l=>l.familyId===ui.activeFamilyId);
+  const fam = ui.activeFamilyId==='all' ? {id:'all', name:'Tout'} : data.families.find(f=>f.id===ui.activeFamilyId);
+  const famLists = ui.activeFamilyId==='all' ? data.lists : data.lists.filter(l=>l.familyId===ui.activeFamilyId);
   const famCotis = data.cotisations.filter(c=>famLists.some(l=>l.id===c.listId) && c.status==='paid');
 
   const years = Array.from(new Set(famCotis.map(c=>c.date.slice(0,4)))).sort().reverse();
@@ -860,7 +925,7 @@ let listMode = 'existing';
 
 function openAddCotisationSheet(){
   if(!isAdmin(currentMember())){ showToast('Seuls AGBOKOU Daniel et AMOUZOU Prosper peuvent saisir des cotisations.'); return; }
-  if(!ui.activeFamilyId){ showToast('Choisissez une famille d’abord.'); return; }
+  if(!ui.activeFamilyId || ui.activeFamilyId==='all'){ showToast('Choisissez une famille précise d’abord (pas "Tout").'); return; }
   const famId = ui.activeFamilyId;
   const famMembers = data.members.filter(m=>m.familyId===famId);
   const famLists = data.lists.filter(l=>l.familyId===famId);
@@ -929,27 +994,33 @@ function openAddCotisationSheet(){
 /* ================= MEMBRES ================= */
 function renderMembres(){
   const el = $('#membersList');
-  let html = '';
-  data.families.forEach(f=>{
-    const mem = data.members.filter(m=>m.familyId===f.id);
-    html += `<div class="fam-tag">${escapeHTML(f.name)}</div>`;
-    if(mem.length===0){
-      html += `<div class="muted" style="margin-bottom:10px;">Aucun membre.</div>`;
-    } else {
-      mem.forEach(m=>{
-        html += `
-          <div class="member-card">
-            <div class="who">${initials(m.prenom+' '+m.nom)}</div>
-            <div class="info"><div class="name">${escapeHTML(m.prenom+' '+m.nom)}</div></div>
-            <div class="acts">
-              <button class="del-btn" data-edit="${m.id}" title="Modifier">✎</button>
-              <button class="del-btn" data-del="${m.id}" title="Retirer">✕</button>
-            </div>
-          </div>`;
-      });
-    }
-  });
+  const options = [{id:'all', name:'Tout'}, ...data.families];
+  const mem = data.members.filter(m => ui.membreFilter==='all' ? true : m.familyId===ui.membreFilter);
+
+  let html = `
+    <div class="family-select-row" style="margin-bottom:14px;">
+      <select id="membreFamilySelect">
+        ${options.map(f=>`<option value="${f.id}" ${ui.membreFilter===f.id?'selected':''}>${escapeHTML(f.name)}</option>`).join('')}
+      </select>
+    </div>
+  `;
+  if(mem.length===0){
+    html += emptyState('👪','Aucun membre','Ajoutez un membre avec le bouton ci-dessous.');
+  } else {
+    mem.forEach(m=>{
+      html += `
+        <div class="member-card">
+          <div class="who">${initials(m.prenom+' '+m.nom)}</div>
+          <div class="info"><div class="name">${escapeHTML(m.prenom+' '+m.nom)}</div></div>
+          <div class="acts">
+            <button class="del-btn" data-edit="${m.id}" title="Modifier">✎</button>
+            <button class="del-btn" data-del="${m.id}" title="Retirer">✕</button>
+          </div>
+        </div>`;
+    });
+  }
   el.innerHTML = html;
+  $('#membreFamilySelect').onchange = e => { ui.membreFilter = e.target.value; render(); };
   el.querySelectorAll('[data-del]').forEach(b=>{
     b.onclick = () => requestOwnCode(b.dataset.del, () => {
       data.members = data.members.filter(m=>m.id!==b.dataset.del);
@@ -978,7 +1049,7 @@ function openEditMemberSheet(memberId){
     <div class="field"><label>Prénom</label><input type="text" id="e_prenom" value="${escapeHTML(m.prenom)}"></div>
     <div class="field"><label>Nom</label><input type="text" id="e_nom" value="${escapeHTML(m.nom)}"></div>
     <div class="field"><label>Famille</label>
-      <select id="e_family">${data.families.map(f=>`<option value="${f.id}" ${f.id===m.familyId?'selected':''}>${escapeHTML(f.name)}</option>`).join('')}</select>
+      <select id="e_family">${[{id:'all',name:'Tout'}, ...data.families].map(f=>`<option value="${f.id}" ${f.id===m.familyId?'selected':''}>${escapeHTML(f.name)}</option>`).join('')}</select>
     </div>
     <div class="field"><label>Code personnel</label><input type="text" id="e_code" value="${escapeHTML(m.code)}"></div>
     <div class="sheet-actions">
@@ -1014,7 +1085,7 @@ function openAddMemberSheet(){
     <div class="field"><label>Prénom</label><input type="text" id="n_prenom" placeholder="ex : Awa"></div>
     <div class="field"><label>Nom</label><input type="text" id="n_nom" placeholder="ex : Diallo"></div>
     <div class="field"><label>Famille</label>
-      <select id="n_family">${data.families.map(f=>`<option value="${f.id}" ${f.id===ui.activeFamilyId?'selected':''}>${escapeHTML(f.name)}</option>`).join('')}</select>
+      <select id="n_family">${[{id:'all',name:'Tout'}, ...data.families].map(f=>`<option value="${f.id}" ${f.id===(ui.activeFamilyId||ui.membreFilter)?'selected':''}>${escapeHTML(f.name)}</option>`).join('')}</select>
     </div>
     <div class="field"><label>Code personnel (choisi par la personne)</label><input type="text" id="n_code" placeholder="ex : 4821"></div>
     <div class="sheet-actions">
@@ -1035,6 +1106,304 @@ function openAddMemberSheet(){
     showToast('Membre ajouté.');
   };
   openSheet();
+}
+
+/* ================= ARCHIVES ================= */
+function compressImage(file, maxDim, quality){
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        let w = img.width, h = img.height;
+        if(w > h && w > maxDim){ h = Math.round(h * maxDim / w); w = maxDim; }
+        else if(h >= w && h > maxDim){ w = Math.round(w * maxDim / h); h = maxDim; }
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.onerror = reject;
+      img.src = e.target.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+function renderArchives(){
+  const el = $('#archivesInner');
+  if(!el) return;
+  const options = [{id:'all', name:'Tout'}, ...data.families];
+  const events = data.archives.filter(ev => ui.archiveFilter==='all' ? true : ev.familyId===ui.archiveFilter)
+    .sort((a,b)=> (b.date||'').localeCompare(a.date||''));
+
+  let html = `
+    <h2 class="section-title">Archives</h2>
+    <div class="family-select-row" style="margin-bottom:14px;">
+      <select id="archiveFamilySelect">
+        ${options.map(f=>`<option value="${f.id}" ${ui.archiveFilter===f.id?'selected':''}>${escapeHTML(f.name)}</option>`).join('')}
+      </select>
+    </div>
+  `;
+
+  if(events.length===0){
+    html += emptyState('🖼️','Aucun évènement archivé','Créez un évènement pour y déposer vos photos.');
+  } else {
+    events.forEach(ev=>{
+      const famName = ev.familyId==='all' ? 'Tout' : (data.families.find(f=>f.id===ev.familyId)||{name:''}).name;
+      const dateFmt = ev.date ? new Date(ev.date).toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'numeric'}) : '';
+      html += `
+        <div class="event-card" data-event="${ev.id}">
+          <div class="event-head">
+            <div>
+              <div class="event-name">${escapeHTML(ev.name)}</div>
+              <div class="event-date">${dateFmt}${famName?' · '+escapeHTML(famName):''} · ${ev.images.length} photo(s)</div>
+            </div>
+            <button class="del-btn" data-del-event="${ev.id}" title="Supprimer l’évènement">✕</button>
+          </div>
+          <div class="photo-grid">
+            ${ev.images.map(img=>`
+              <div class="photo-thumb">
+                <img src="${img.data}" data-view-img="${img.data}">
+                <button class="photo-del" data-del-photo="${ev.id}|${img.id}" title="Supprimer">✕</button>
+              </div>`).join('')}
+          </div>
+          <button class="dashed-btn" data-add-photos="${ev.id}">📷 Ajouter des photos</button>
+        </div>`;
+    });
+  }
+
+  el.innerHTML = html;
+  $('#archiveFamilySelect').onchange = e => { ui.archiveFilter = e.target.value; render(); };
+
+  el.querySelectorAll('[data-view-img]').forEach(img=>{
+    img.onclick = () => { $('#lightboxImg').src = img.dataset.viewImg; $('#lightbox').classList.add('active'); };
+  });
+  el.querySelectorAll('[data-del-photo]').forEach(b=>{
+    b.onclick = () => {
+      if(!isAdmin(currentMember())){ showToast('Seuls les gestionnaires peuvent supprimer des photos.'); return; }
+      const [eventId, imgId] = b.dataset.delPhoto.split('|');
+      if(confirm('Supprimer cette photo ?')){
+        const ev = data.archives.find(e=>e.id===eventId);
+        ev.images = ev.images.filter(im=>im.id!==imgId);
+        saveData(); render();
+      }
+    };
+  });
+  el.querySelectorAll('[data-del-event]').forEach(b=>{
+    b.onclick = () => {
+      if(!isAdmin(currentMember())){ showToast('Seuls les gestionnaires peuvent supprimer un évènement.'); return; }
+      if(confirm('Supprimer tout l’évènement et ses photos ?')){
+        data.archives = data.archives.filter(e=>e.id!==b.dataset.delEvent);
+        saveData(); render();
+      }
+    };
+  });
+  el.querySelectorAll('[data-add-photos]').forEach(b=>{
+    b.onclick = () => openAddPhotosSheet(b.dataset.addPhotos);
+  });
+
+  const addBtn = document.createElement('button');
+  addBtn.className = 'dashed-btn';
+  addBtn.style.marginTop = '4px';
+  addBtn.textContent = '＋ Créer un évènement';
+  addBtn.onclick = openAddEventSheet;
+  el.appendChild(addBtn);
+}
+
+$('#lightboxClose').onclick = () => $('#lightbox').classList.remove('active');
+$('#lightbox').addEventListener('click', e=>{ if(e.target.id==='lightbox') $('#lightbox').classList.remove('active'); });
+
+function openAddEventSheet(){
+  if(!currentMember()){ showToast('Connectez-vous d’abord.'); return; }
+  const today = new Date().toISOString().slice(0,10);
+  $('#sheetContent').innerHTML = `
+    <h3>Nouvel évènement</h3>
+    <div class="field"><label>Nom de l’évènement</label><input type="text" id="ev_name" placeholder="ex : Fête de fin d’année 2026"></div>
+    <div class="field"><label>Date</label><input type="date" id="ev_date" value="${today}"></div>
+    <div class="field"><label>Famille</label>
+      <select id="ev_family">${[{id:'all',name:'Tout'}, ...data.families].map(f=>`<option value="${f.id}" ${f.id===(ui.activeFamilyId||'all')?'selected':''}>${escapeHTML(f.name)}</option>`).join('')}</select>
+    </div>
+    <div class="sheet-actions">
+      <button class="btn-secondary" id="cancelSheet">Annuler</button>
+      <button class="btn-primary" id="saveSheet">Créer</button>
+    </div>
+  `;
+  $('#cancelSheet').onclick = closeSheet;
+  $('#saveSheet').onclick = () => {
+    const name = $('#ev_name').value.trim();
+    if(!name){ showToast('Donnez un nom à l’évènement.'); return; }
+    const ev = { id: uid(), name, date: $('#ev_date').value || today, familyId: $('#ev_family').value, images: [] };
+    data.archives.push(ev);
+    saveData(); render(); closeSheet();
+    showToast('Évènement créé.');
+    openAddPhotosSheet(ev.id);
+  };
+  openSheet();
+}
+
+function openAddPhotosSheet(eventId){
+  $('#sheetContent').innerHTML = `
+    <h3>Ajouter des photos</h3>
+    <p class="muted" style="margin-bottom:14px;">Les images sont compressées automatiquement avant d’être enregistrées.</p>
+    <div class="field"><input type="file" id="photoFiles" accept="image/*" multiple></div>
+    <div class="sheet-actions">
+      <button class="btn-secondary" id="cancelSheet">Fermer</button>
+      <button class="btn-primary" id="uploadBtn">Envoyer</button>
+    </div>
+  `;
+  $('#cancelSheet').onclick = closeSheet;
+  $('#uploadBtn').onclick = async () => {
+    const files = Array.from($('#photoFiles').files || []);
+    if(files.length===0){ showToast('Choisissez au moins une photo.'); return; }
+    $('#uploadBtn').textContent = 'Envoi…';
+    $('#uploadBtn').disabled = true;
+    const ev = data.archives.find(e=>e.id===eventId);
+    for(const file of files){
+      try{
+        const dataUrl = await compressImage(file, 1000, 0.65);
+        ev.images.push({ id: uid(), data: dataUrl });
+      }catch(err){ console.error(err); }
+    }
+    await saveData();
+    render(); closeSheet();
+    showToast(`${files.length} photo(s) ajoutée(s).`);
+  };
+  openSheet();
+}
+
+/* ================= SUGGESTIONS / BOÎTE ================= */
+function adminMembers(){ return data.members.filter(m=>isAdmin(m)); }
+
+function renderSuggestions(){
+  const el = $('#suggestionsInner');
+  if(!el) return;
+  const me = currentMember();
+  const admins = adminMembers();
+
+  el.innerHTML = `
+    <h2 class="section-title">Suggestions</h2>
+    <p class="muted" style="margin-bottom:14px;">Écrivez un message à l’un des gestionnaires — il arrivera dans sa Boîte. Vous pouvez aussi vous l’envoyer à vous-même comme pense-bête.</p>
+    ${admins.length===0 ? emptyState('📭','Aucun gestionnaire inscrit pour l’instant','') : `
+      <div class="field"><label>Destinataire</label>
+        <select id="sug_recipient">${admins.map(a=>`<option value="${a.id}">${escapeHTML(a.prenom+' '+a.nom)}${me && a.id===me.id ? ' (moi-même)' : ''}</option>`).join('')}</select>
+      </div>
+      <div class="field"><textarea id="sug_text" rows="4" placeholder="Votre suggestion…" style="width:100%;padding:11px 12px;border-radius:10px;border:1.5px solid var(--paper-line);background:var(--paper-light);font-family:'Inter',sans-serif;font-size:14.5px;color:var(--ink);resize:vertical;"></textarea></div>
+      <button class="dashed-btn" id="sendSuggestionBtn" style="margin-bottom:18px;">✉️ Envoyer</button>
+      <div id="mySuggestionsList"></div>
+    `}
+  `;
+  if(admins.length===0) return;
+
+  if(me){
+    const mine = data.suggestions.filter(s=>s.senderId===me.id).sort((a,b)=>b.date.localeCompare(a.date));
+    if(mine.length>0){
+      const listEl = $('#mySuggestionsList');
+      listEl.insertAdjacentHTML('beforeend', `<div class="fam-tag">Vos envois</div>`);
+      listEl.insertAdjacentHTML('beforeend', mine.map(s=>`
+        <div class="suggestion-card">
+          <div class="sug-meta">À ${escapeHTML(s.recipientName)} · ${new Date(s.date).toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'numeric'})}</div>
+          <div class="sug-text">${escapeHTML(s.text)}</div>
+        </div>`).join(''));
+    }
+    if(!isAdmin(me)){
+      const received = data.suggestions.filter(s=>s.recipientId===me.id).sort((a,b)=>b.date.localeCompare(a.date));
+      if(received.length>0){
+        const listEl = $('#mySuggestionsList');
+        listEl.insertAdjacentHTML('beforeend', `<div class="fam-tag">Reçus</div>`);
+        listEl.insertAdjacentHTML('beforeend', received.map(s=>`
+          <div class="suggestion-card">
+            <div class="sug-meta">De ${escapeHTML(s.senderName)} · ${new Date(s.date).toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'numeric'})}</div>
+            <div class="sug-text">${escapeHTML(s.text)}</div>
+          </div>`).join(''));
+      }
+    }
+  }
+
+  $('#sendSuggestionBtn').onclick = () => {
+    if(!me){ showToast('Connectez-vous d’abord.'); return; }
+    const text = $('#sug_text').value.trim();
+    if(!text){ showToast('Écrivez votre suggestion avant d’envoyer.'); return; }
+    const recipientId = $('#sug_recipient').value;
+    const recipient = data.members.find(m=>m.id===recipientId);
+    data.suggestions.push({
+      id: uid(), senderId: me.id, senderName: `${me.prenom} ${me.nom}`,
+      recipientId, recipientName: `${recipient.prenom} ${recipient.nom}`,
+      text, date: new Date().toISOString()
+    });
+    saveData(); render();
+    showToast(`Envoyé à ${recipient.prenom} ${recipient.nom}.`);
+  };
+}
+
+function renderBoite(){
+  const el = $('#boiteInner');
+  const me = currentMember();
+
+  updateBoiteBadge(me);
+
+  if(!el) return;
+  if(!me || !isAdmin(me)){
+    el.innerHTML = emptyState('🔒','Réservé aux gestionnaires','Cette boîte n’est visible que par AGBOKOU Daniel et AMOUZOU Prosper.');
+    return;
+  }
+  const received = data.suggestions.filter(s=>s.recipientId===me.id).sort((a,b)=>b.date.localeCompare(a.date));
+
+  el.innerHTML = `<h2 class="section-title">Boîte de ${escapeHTML(me.prenom)}</h2>`;
+  if(received.length===0){
+    el.insertAdjacentHTML('beforeend', emptyState('📭','Boîte vide','Les suggestions qui vous sont envoyées apparaîtront ici.'));
+    return;
+  }
+  el.insertAdjacentHTML('beforeend', received.map(s=>`
+    <div class="suggestion-card">
+      <div class="sug-meta">De ${escapeHTML(s.senderName)}${s.senderId===me.id?' (vous-même)':''} · ${new Date(s.date).toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'numeric'})}
+        <button class="del-btn" data-del-sug="${s.id}" title="Supprimer" style="float:right;">✕</button>
+      </div>
+      <div class="sug-text">${escapeHTML(s.text)}</div>
+      <button class="dashed-btn" data-reply="${s.id}" style="margin-top:10px;padding:9px;font-size:12.5px;">↩ Répondre</button>
+      <div id="replyZone-${s.id}" style="display:none;margin-top:8px;">
+        <textarea id="replyText-${s.id}" rows="3" placeholder="Votre réponse…" style="width:100%;padding:9px 10px;border-radius:8px;border:1.5px solid var(--paper-line);background:var(--paper);font-family:'Inter',sans-serif;font-size:13.5px;color:var(--ink);resize:vertical;margin-bottom:8px;"></textarea>
+        <button class="btn-primary" data-send-reply="${s.id}" style="width:100%;padding:10px;border-radius:10px;border:none;font-weight:600;font-size:13px;cursor:pointer;">Envoyer la réponse</button>
+      </div>
+    </div>`).join(''));
+
+  el.querySelectorAll('[data-del-sug]').forEach(b=>{
+    b.onclick = () => {
+      data.suggestions = data.suggestions.filter(s=>s.id!==b.dataset.delSug);
+      saveData(); render();
+    };
+  });
+  el.querySelectorAll('[data-reply]').forEach(b=>{
+    b.onclick = () => {
+      const zone = $('#replyZone-'+b.dataset.reply);
+      zone.style.display = zone.style.display==='none' ? 'block' : 'none';
+    };
+  });
+  el.querySelectorAll('[data-send-reply]').forEach(b=>{
+    b.onclick = () => {
+      const original = data.suggestions.find(s=>s.id===b.dataset.sendReply);
+      const textarea = $('#replyText-'+b.dataset.sendReply);
+      const text = textarea.value.trim();
+      if(!text){ showToast('Écrivez votre réponse avant d’envoyer.'); return; }
+      data.suggestions.push({
+        id: uid(), senderId: me.id, senderName: `${me.prenom} ${me.nom}`,
+        recipientId: original.senderId, recipientName: original.senderName,
+        text, date: new Date().toISOString()
+      });
+      saveData(); render();
+      showToast(`Réponse envoyée à ${original.senderName}.`);
+    };
+  });
+}
+
+function updateBoiteBadge(me){
+  const badge = $('#boiteBadge');
+  if(!badge) return;
+  if(!me || !isAdmin(me)){ badge.style.display='none'; return; }
+  const count = data.suggestions.filter(s=>s.recipientId===me.id).length;
+  if(count>0){ badge.textContent = count; badge.style.display='inline-block'; }
+  else { badge.style.display='none'; }
 }
 
 /* ================= SHEET HELPERS ================= */
