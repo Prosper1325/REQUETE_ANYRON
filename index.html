@@ -302,7 +302,7 @@ const BLOB_ID = '019fbf27-038a-7eb2-9fdb-66495dbcfcfe';
 const API_BASE = 'https://jsonblob.com/api/jsonBlob/';
 const MONTHS = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
 
-let data = { families: [], members: [], lists: [], cotisations: [], archives: [], suggestions: [], hierarchy: [], meetingNotes: [] };
+let data = { families: [], members: [], lists: [], cotisations: [], archives: [], archiveDocuments: [], suggestions: [], hierarchy: [], meetingNotes: [] };
 let session = { memberId: null };
 let ui = { view:'apercu', activeFamilyId:null, listFilter:'', yearFilter:'', monthFilter:'', evoYear:'', membreFilter:'all', archiveFilter:'all' };
 
@@ -325,6 +325,7 @@ function defaultData(){
     lists: [],
     cotisations: [],
     archives: [],
+    archiveDocuments: [],
     suggestions: [],
     hierarchy: [],
     meetingNotes: []
@@ -360,6 +361,19 @@ function isAdmin(m){
   const nom = (m.nom||'').trim().toUpperCase();
   const prenom = (m.prenom||'').trim().toUpperCase();
   return ADMIN_IDENTITIES.some(a => a.nom===nom && a.prenom===prenom);
+}
+/* Familles que le membre courant est autorisé à voir. Les admins voient tout. */
+function visibleFamilies(includeAll){
+  const me = currentMember();
+  if(isAdmin(me)){
+    return includeAll ? [{id:'all', name:'Tout'}, ...data.families] : data.families.slice();
+  }
+  if(!me) return [];
+  return data.families.filter(f => (me.familyIds||[]).includes(f.id));
+}
+function clampFamilyFilter(current){
+  const allowed = visibleFamilies(true).map(f=>f.id);
+  return allowed.includes(current) ? current : (allowed[0] || '');
 }
 function familyCheckboxesHTML(idPrefix, selectedIds){
   return data.families.map(f=>`
@@ -402,11 +416,7 @@ function showSetupError(msg){
 }
 
 function migrateFamilies(){
-  const rename = { fam1:'AGBOKOUVIWO', fam2:'ANYRONVIWO' };
-  data.families.forEach(f=>{ if(rename[f.id]) f.name = rename[f.id]; });
-  const before = data.families.length;
-  data.families = data.families.filter(f=>f.id==='fam1' || f.id==='fam2');
-  let changed = data.families.length !== before;
+  let changed = false;
   data.suggestions.forEach(s=>{ if(s.lu===undefined){ s.lu = true; changed = true; } });
   if(changed) saveData();
 }
@@ -560,14 +570,14 @@ function famMemberCount(familyId){
 
 function renderApercu(){
   const el = $('#familyGrid');
-  const options = [{id:'all', name:'Tout'}, ...data.families];
+  const options = visibleFamilies(true);
   el.innerHTML = `
     <div class="family-select-row">
       <select id="apercuFamilySelect">
         <option value="" disabled selected>Choisir une famille…</option>
         ${options.map(f=>`<option value="${f.id}">${escapeHTML(f.name)}</option>`).join('')}
       </select>
-      <button class="edit-ico-btn" id="apercuRenameBtn" title="Renommer la famille sélectionnée">✎</button>
+      <button class="edit-ico-btn" id="apercuRenameBtn" title="Renommer la famille sélectionnée" style="${isAdmin(currentMember())?'':'display:none;'}">✎</button>
     </div>
   `;
   $('#apercuFamilySelect').onchange = e => {
@@ -579,6 +589,7 @@ function renderApercu(){
     syncTabs(); render();
   };
   $('#apercuRenameBtn').onclick = () => {
+    if(!isAdmin(currentMember())){ return; }
     const id = $('#apercuFamilySelect').value;
     if(!id || id==='all'){ showToast('Choisissez d’abord une famille précise (pas "Tout") dans le menu.'); return; }
     const f = data.families.find(f=>f.id===id);
@@ -638,7 +649,7 @@ function renderCotisations(){
       <div class="family-select-row">
         <select id="cotisFamilySelect">
           <option value="" disabled selected>Choisir une famille…</option>
-          ${[{id:'all',name:'Tout'}, ...data.families].map(f=>`<option value="${f.id}">${escapeHTML(f.name)}</option>`).join('')}
+          ${visibleFamilies(true).map(f=>`<option value="${f.id}">${escapeHTML(f.name)}</option>`).join('')}
         </select>
       </div>
     `;
@@ -793,7 +804,7 @@ function renderEvolution(){
       <div class="family-select-row">
         <select id="evoFamilySelect">
           <option value="" disabled selected>Choisir une famille…</option>
-          ${[{id:'all',name:'Tout'}, ...data.families].map(f=>`<option value="${f.id}">${escapeHTML(f.name)}</option>`).join('')}
+          ${visibleFamilies(true).map(f=>`<option value="${f.id}">${escapeHTML(f.name)}</option>`).join('')}
         </select>
       </div>
     `;
@@ -1079,8 +1090,9 @@ function renderReunions(){
 
 function renderReunionsConsulter(){
   const zone = $('#reunionSubZone');
-  const options = [{id:'all', name:'Tout'}, ...data.families];
-  const notes = data.meetingNotes.filter(n => ui.reunionFilter==='all' ? true : n.familyId===ui.reunionFilter)
+  ui.reunionFilter = clampFamilyFilter(ui.reunionFilter);
+  const options = visibleFamilies(true);
+  const notes = data.meetingNotes.filter(n => ui.reunionFilter==='all' ? true : (n.familyId===ui.reunionFilter || n.familyId==='all'))
     .sort((a,b)=> b.date.localeCompare(a.date));
   const canWrite = isAdmin(currentMember());
 
@@ -1162,7 +1174,7 @@ function renderReunionsCreer(){
     <div class="field" style="margin-top:14px;"><label>Titre</label><input type="text" id="rn_title" placeholder="ex : Réunion du 12 janvier 2026"></div>
     <div class="field"><label>Date</label><input type="date" id="rn_date" value="${today}"></div>
     <div class="field"><label>Famille</label>
-      <select id="rn_family">${[{id:'all',name:'Tout'}, ...data.families].map(f=>`<option value="${f.id}">${escapeHTML(f.name)}</option>`).join('')}</select>
+      <select id="rn_family">${visibleFamilies(true).map(f=>`<option value="${f.id}">${escapeHTML(f.name)}</option>`).join('')}</select>
     </div>
     <div class="field"><label>Type</label>
       <div class="toggle-group">
@@ -1223,20 +1235,21 @@ function renderAutorisations(){
     return;
   }
   const pending = data.members.filter(m=>m.status==='pending');
-  el.innerHTML = `<h2 class="section-title">Demandes d’inscription</h2>`;
+  el.innerHTML = `<h2 class="section-title">Demandes d’inscription</h2><div id="pendingZone"></div><div id="familiesManageZone"></div>`;
+  const pendingZone = $('#pendingZone');
   if(pending.length===0){
-    el.insertAdjacentHTML('beforeend', emptyState('✅','Aucune demande en attente',''));
-    return;
+    pendingZone.innerHTML = emptyState('✅','Aucune demande en attente','');
+  } else {
+    pending.forEach(m=>{
+      pendingZone.insertAdjacentHTML('beforeend', `
+        <div class="event-card" data-request="${m.id}">
+          <div class="event-name">${escapeHTML(m.prenom+' '+m.nom)}</div>
+          <div class="event-date" style="margin-bottom:10px;">demande à rejoindre :</div>
+          <div id="req_fams_${m.id}">${familyCheckboxesHTML('req_'+m.id, m.pendingFamilyIds)}</div>
+          <button class="btn-primary" data-validate-request="${m.id}" style="width:100%;padding:12px;border-radius:12px;border:none;font-weight:600;cursor:pointer;margin-top:8px;">Valider la sélection</button>
+        </div>`);
+    });
   }
-  pending.forEach(m=>{
-    el.insertAdjacentHTML('beforeend', `
-      <div class="event-card" data-request="${m.id}">
-        <div class="event-name">${escapeHTML(m.prenom+' '+m.nom)}</div>
-        <div class="event-date" style="margin-bottom:10px;">demande à rejoindre :</div>
-        <div id="req_fams_${m.id}">${familyCheckboxesHTML('req_'+m.id, m.pendingFamilyIds)}</div>
-        <button class="btn-primary" data-validate-request="${m.id}" style="width:100%;padding:12px;border-radius:12px;border:none;font-weight:600;cursor:pointer;margin-top:8px;">Valider la sélection</button>
-      </div>`);
-  });
   el.querySelectorAll('[data-validate-request]').forEach(b=>{
     b.onclick = () => {
       const mid = b.dataset.validateRequest;
@@ -1260,6 +1273,58 @@ function renderAutorisations(){
       showToast(`Inscription de ${m.prenom} ${m.nom} traitée.`);
     };
   });
+
+  renderFamiliesManage();
+}
+
+function renderFamiliesManage(){
+  const zone = $('#familiesManageZone');
+  if(!zone) return;
+  let html = `<h2 class="section-title" style="margin-top:22px;">Gérer les familles</h2>`;
+  data.families.forEach(f=>{
+    const memCount = data.members.filter(m=>(m.familyIds||[]).includes(f.id)).length;
+    const pendCount = data.members.filter(m=>(m.pendingFamilyIds||[]).includes(f.id)).length;
+    const listCount = data.lists.filter(l=>l.familyId===f.id).length;
+    html += `
+      <div class="member-card">
+        <div class="who">${initials(f.name)}</div>
+        <div class="info"><div class="name">${escapeHTML(f.name)}</div><div class="total">${memCount} membre(s) · ${listCount} liste(s)</div></div>
+        <div class="acts"><button class="del-btn" data-del-family="${f.id}" title="Supprimer">✕</button></div>
+      </div>`;
+  });
+  zone.innerHTML = html;
+  zone.querySelectorAll('[data-del-family]').forEach(b=>{
+    b.onclick = () => {
+      const f = data.families.find(x=>x.id===b.dataset.delFamily);
+      const usedBy = data.members.filter(m=>(m.familyIds||[]).includes(f.id) || (m.pendingFamilyIds||[]).includes(f.id)).length;
+      const hasLists = data.lists.some(l=>l.familyId===f.id);
+      const hasArchives = data.archives.some(e=>e.familyId===f.id) || data.archiveDocuments.some(d=>d.familyId===f.id);
+      const hasHier = data.hierarchy.some(h=>h.familyId===f.id);
+      const hasNotes = data.meetingNotes.some(n=>n.familyId===f.id);
+      if(usedBy>0 || hasLists || hasArchives || hasHier || hasNotes){
+        showToast('Impossible : des membres ou des données sont encore rattachés à cette famille.');
+        return;
+      }
+      if(confirm(`Supprimer définitivement "${f.name}" ?`)){
+        data.families = data.families.filter(x=>x.id!==f.id);
+        saveData(); render();
+        showToast('Famille supprimée.');
+      }
+    };
+  });
+  const addBtn = document.createElement('button');
+  addBtn.className = 'dashed-btn';
+  addBtn.style.marginTop = '4px';
+  addBtn.textContent = '＋ Créer une famille';
+  addBtn.onclick = () => {
+    const name = prompt('Nom de la nouvelle famille :');
+    if(name && name.trim()){
+      data.families.push({ id: uid(), name: name.trim() });
+      saveData(); render();
+      showToast('Famille créée.');
+    }
+  };
+  zone.appendChild(addBtn);
 }
 
 function updateAutorisationsBadge(me){
@@ -1278,8 +1343,9 @@ function renderHierarchie(){
   const el = $('#hierarchieInner');
   if(!el) return;
   if(!ui.hierFilter) ui.hierFilter = 'all';
+  ui.hierFilter = clampFamilyFilter(ui.hierFilter);
   const canWrite = isAdmin(currentMember());
-  const options = [{id:'all', name:'Tout'}, ...data.families];
+  const options = visibleFamilies(true);
   const entries = data.hierarchy.filter(h => ui.hierFilter==='all' ? true : h.familyId===ui.hierFilter);
 
   let html = `
@@ -1642,7 +1708,8 @@ function renderGrilleForm(famId, famMembers, famLists){
 /* ================= MEMBRES ================= */
 function renderMembres(){
   const el = $('#membersList');
-  const options = [{id:'all', name:'Tout'}, ...data.families];
+  ui.membreFilter = clampFamilyFilter(ui.membreFilter);
+  const options = visibleFamilies(true);
   const mem = data.members.filter(m => ui.membreFilter==='all' ? true : (m.familyIds && m.familyIds.includes(ui.membreFilter)));
 
   let html = `
@@ -1782,23 +1849,51 @@ function compressImage(file, maxDim, quality){
 function renderArchives(){
   const el = $('#archivesInner');
   if(!el) return;
-  const options = [{id:'all', name:'Tout'}, ...data.families];
-  const events = data.archives.filter(ev => ui.archiveFilter==='all' ? true : ev.familyId===ui.archiveFilter)
+  if(!ui.archivesMain) ui.archivesMain = 'images';
+  if(!ui.archivesSub) ui.archivesSub = 'view';
+
+  el.innerHTML = `
+    <h2 class="section-title">Archives</h2>
+    <div class="toggle-group">
+      <button type="button" id="arch_main_images" class="${ui.archivesMain==='images'?'active':''}">Images</button>
+      <button type="button" id="arch_main_documents" class="${ui.archivesMain==='documents'?'active':''}">Documents</button>
+    </div>
+    <div class="toggle-group">
+      <button type="button" id="arch_sub_view" class="${ui.archivesSub==='view'?'active':''}">${ui.archivesMain==='images'?'Visionner':'Consulter'}</button>
+      <button type="button" id="arch_sub_add" class="${ui.archivesSub==='add'?'active':''}">Ajouter</button>
+    </div>
+    <div id="archivesSubZone"></div>
+  `;
+  $('#arch_main_images').onclick = () => { ui.archivesMain='images'; render(); };
+  $('#arch_main_documents').onclick = () => { ui.archivesMain='documents'; render(); };
+  $('#arch_sub_view').onclick = () => { ui.archivesSub='view'; render(); };
+  $('#arch_sub_add').onclick = () => { ui.archivesSub='add'; render(); };
+
+  if(ui.archivesMain==='images'){
+    if(ui.archivesSub==='view') renderImagesView(); else renderImagesAdd();
+  } else {
+    if(ui.archivesSub==='view') renderDocumentsView(); else renderDocumentsAdd();
+  }
+}
+
+/* ---- IMAGES : Visionner ---- */
+function renderImagesView(){
+  const zone = $('#archivesSubZone');
+  ui.archiveFilter = clampFamilyFilter(ui.archiveFilter);
+  const options = visibleFamilies(true);
+  const events = data.archives.filter(ev => ui.archiveFilter==='all' ? true : (ev.familyId===ui.archiveFilter || ev.familyId==='all'))
     .sort((a,b)=> (b.date||'').localeCompare(a.date||''));
 
   let html = `
-    <h2 class="section-title">Archives</h2>
-    <div class="family-select-row" style="margin-bottom:14px;">
-      <select id="archiveFamilySelect">
-        ${options.map(f=>`<option value="${f.id}" ${ui.archiveFilter===f.id?'selected':''}>${escapeHTML(f.name)}</option>`).join('')}
-      </select>
+    <div class="family-select-row" style="margin:14px 0;">
+      <select id="archiveFamilySelect">${options.map(f=>`<option value="${f.id}" ${ui.archiveFilter===f.id?'selected':''}>${escapeHTML(f.name)}</option>`).join('')}</select>
     </div>
   `;
 
-  if(events.length===0){
-    html += emptyState('🖼️','Aucun évènement archivé','Créez un évènement pour y déposer vos photos.');
+  if(events.length===0 || events.every(ev=>ev.images.length===0)){
+    html += emptyState('🖼️','Aucune photo pour l’instant','Utilisez l’onglet "Ajouter" pour créer un évènement et y déposer des photos.');
   } else {
-    events.forEach(ev=>{
+    events.filter(ev=>ev.images.length>0).forEach(ev=>{
       const famName = ev.familyId==='all' ? 'Tout' : (data.families.find(f=>f.id===ev.familyId)||{name:''}).name;
       const dateFmt = ev.date ? new Date(ev.date).toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'numeric'}) : '';
       html += `
@@ -1808,32 +1903,29 @@ function renderArchives(){
               <div class="event-name">${escapeHTML(ev.name)}</div>
               <div class="event-date">${dateFmt}${famName?' · '+escapeHTML(famName):''} · ${ev.images.length} photo(s)</div>
             </div>
-            <button class="del-btn" data-del-event="${ev.id}" title="Supprimer l’évènement">✕</button>
+            ${isAdmin(currentMember()) ? `<button class="del-btn" data-del-event="${ev.id}" title="Supprimer l’évènement">✕</button>` : ''}
           </div>
           ${isAdmin(currentMember()) ? `<button class="del-btn" data-rename-event="${ev.id}" title="Renommer" style="margin-bottom:8px;">✎ Renommer</button>` : ''}
           <div class="photo-grid">
             ${ev.images.map(img=>`
               <div class="photo-thumb">
                 <img src="${img.data}" data-view-img="${img.data}">
-                <button class="photo-del" data-download-photo="${img.id}" data-event-id="${ev.id}" title="Télécharger" style="right:26px;background:rgba(30,42,56,0.65);">⬇</button>
+                <button class="photo-del" data-download-photo="${img.id}" data-event-id="${ev.id}" title="Télécharger" style="right:${isAdmin(currentMember())?'26px':'3px'};background:rgba(30,42,56,0.65);">⬇</button>
                 ${isAdmin(currentMember()) ? `<button class="photo-del" data-del-photo="${ev.id}|${img.id}" title="Supprimer">✕</button>` : ''}
               </div>`).join('')}
           </div>
-          <div style="display:flex;gap:8px;">
-            <button class="dashed-btn" data-add-photos="${ev.id}">📷 Ajouter des photos</button>
-            ${ev.images.length>0 ? `<button class="dashed-btn" data-download-all="${ev.id}">📦 Tout télécharger</button>` : ''}
-          </div>
+          <button class="dashed-btn" data-download-all="${ev.id}">📦 Tout télécharger</button>
         </div>`;
     });
   }
 
-  el.innerHTML = html;
-  $('#archiveFamilySelect').onchange = e => { ui.archiveFilter = e.target.value; render(); };
+  zone.innerHTML = html;
+  $('#archiveFamilySelect').onchange = e => { ui.archiveFilter = e.target.value; renderImagesView(); };
 
-  el.querySelectorAll('[data-view-img]').forEach(img=>{
+  zone.querySelectorAll('[data-view-img]').forEach(img=>{
     img.onclick = () => { $('#lightboxImg').src = img.dataset.viewImg; $('#lightbox').classList.add('active'); };
   });
-  el.querySelectorAll('[data-download-photo]').forEach(b=>{
+  zone.querySelectorAll('[data-download-photo]').forEach(b=>{
     b.onclick = () => {
       const ev = data.archives.find(e=>e.id===b.dataset.eventId);
       const img = ev.images.find(i=>i.id===b.dataset.downloadPhoto);
@@ -1842,7 +1934,7 @@ function renderArchives(){
       document.body.appendChild(a); a.click(); a.remove();
     };
   });
-  el.querySelectorAll('[data-download-all]').forEach(b=>{
+  zone.querySelectorAll('[data-download-all]').forEach(b=>{
     b.onclick = async () => {
       const ev = data.archives.find(e=>e.id===b.dataset.downloadAll);
       b.textContent = 'Préparation…';
@@ -1858,7 +1950,7 @@ function renderArchives(){
       b.textContent = '📦 Tout télécharger';
     };
   });
-  el.querySelectorAll('[data-del-photo]').forEach(b=>{
+  zone.querySelectorAll('[data-del-photo]').forEach(b=>{
     b.onclick = () => {
       if(!isAdmin(currentMember())){ showToast('Seuls les gestionnaires peuvent supprimer des photos.'); return; }
       const [eventId, imgId] = b.dataset.delPhoto.split('|');
@@ -1869,7 +1961,7 @@ function renderArchives(){
       }
     };
   });
-  el.querySelectorAll('[data-del-event]').forEach(b=>{
+  zone.querySelectorAll('[data-del-event]').forEach(b=>{
     b.onclick = () => {
       if(!isAdmin(currentMember())){ showToast('Seuls les gestionnaires peuvent supprimer un évènement.'); return; }
       if(confirm('Supprimer tout l’évènement et ses photos ?')){
@@ -1878,7 +1970,7 @@ function renderArchives(){
       }
     };
   });
-  el.querySelectorAll('[data-rename-event]').forEach(b=>{
+  zone.querySelectorAll('[data-rename-event]').forEach(b=>{
     b.onclick = () => {
       if(!isAdmin(currentMember())){ showToast('Seuls les gestionnaires peuvent renommer un évènement.'); return; }
       const ev = data.archives.find(e=>e.id===b.dataset.renameEvent);
@@ -1886,16 +1978,133 @@ function renderArchives(){
       if(name && name.trim()){ ev.name = name.trim(); saveData(); render(); }
     };
   });
-  el.querySelectorAll('[data-add-photos]').forEach(b=>{
+}
+
+/* ---- IMAGES : Ajouter ---- */
+function renderImagesAdd(){
+  const zone = $('#archivesSubZone');
+  const me = currentMember();
+  if(!me){
+    zone.innerHTML = emptyState('🔒','Connectez-vous','Connectez-vous pour ajouter des photos.');
+    return;
+  }
+  const options = visibleFamilies(true);
+  ui.archiveFilter = clampFamilyFilter(ui.archiveFilter);
+  const events = data.archives.filter(ev => ui.archiveFilter==='all' ? true : (ev.familyId===ui.archiveFilter || ev.familyId==='all'))
+    .sort((a,b)=> (b.date||'').localeCompare(a.date||''));
+
+  let html = `
+    <div class="family-select-row" style="margin:14px 0;">
+      <select id="archiveFamilySelectAdd">${options.map(f=>`<option value="${f.id}" ${ui.archiveFilter===f.id?'selected':''}>${escapeHTML(f.name)}</option>`).join('')}</select>
+    </div>
+    <button class="dashed-btn" id="createEventBtn" style="margin-bottom:14px;">＋ Créer un évènement</button>
+  `;
+  if(events.length===0){
+    html += emptyState('📁','Aucun évènement pour l’instant','Créez-en un avec le bouton ci-dessus.');
+  } else {
+    events.forEach(ev=>{
+      const famName = ev.familyId==='all' ? 'Tout' : (data.families.find(f=>f.id===ev.familyId)||{name:''}).name;
+      html += `
+        <div class="event-card">
+          <div class="event-name">${escapeHTML(ev.name)}</div>
+          <div class="event-date" style="margin-bottom:10px;">${famName?escapeHTML(famName)+' · ':''}${ev.images.length} photo(s)</div>
+          <button class="dashed-btn" data-add-photos="${ev.id}">📷 Ajouter des photos</button>
+        </div>`;
+    });
+  }
+  zone.innerHTML = html;
+  $('#archiveFamilySelectAdd').onchange = e => { ui.archiveFilter = e.target.value; renderImagesAdd(); };
+  $('#createEventBtn').onclick = openAddEventSheet;
+  zone.querySelectorAll('[data-add-photos]').forEach(b=>{
     b.onclick = () => openAddPhotosSheet(b.dataset.addPhotos);
   });
+}
 
-  const addBtn = document.createElement('button');
-  addBtn.className = 'dashed-btn';
-  addBtn.style.marginTop = '4px';
-  addBtn.textContent = '＋ Créer un évènement';
-  addBtn.onclick = openAddEventSheet;
-  el.appendChild(addBtn);
+/* ---- DOCUMENTS : Consulter ---- */
+function renderDocumentsView(){
+  const zone = $('#archivesSubZone');
+  ui.archiveFilter = clampFamilyFilter(ui.archiveFilter);
+  const options = visibleFamilies(true);
+  const docs = data.archiveDocuments.filter(d => ui.archiveFilter==='all' ? true : (d.familyId===ui.archiveFilter || d.familyId==='all'))
+    .sort((a,b)=> (b.date||'').localeCompare(a.date||''));
+
+  let html = `
+    <div class="family-select-row" style="margin:14px 0;">
+      <select id="docFamilySelect">${options.map(f=>`<option value="${f.id}" ${ui.archiveFilter===f.id?'selected':''}>${escapeHTML(f.name)}</option>`).join('')}</select>
+    </div>
+  `;
+  if(docs.length===0){
+    html += emptyState('📄','Aucun document pour l’instant','Utilisez l’onglet "Ajouter" pour déposer un document.');
+  } else {
+    docs.forEach(d=>{
+      const famName = d.familyId==='all' ? 'Tout' : (data.families.find(f=>f.id===d.familyId)||{name:''}).name;
+      const dateFmt = d.date ? new Date(d.date).toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'numeric'}) : '';
+      html += `
+        <div class="event-card">
+          <div class="event-head">
+            <div>
+              <div class="event-name">📄 ${escapeHTML(d.title)}</div>
+              <div class="event-date">${dateFmt}${famName?' · '+escapeHTML(famName):''}${d.uploadedBy?' · '+escapeHTML(d.uploadedBy):''}</div>
+            </div>
+            ${isAdmin(currentMember()) ? `<button class="del-btn" data-del-doc="${d.id}" title="Supprimer">✕</button>` : ''}
+          </div>
+          <button class="dashed-btn" data-download-doc="${d.id}">⬇ Télécharger ${escapeHTML(d.fileName||'')}</button>
+        </div>`;
+    });
+  }
+  zone.innerHTML = html;
+  $('#docFamilySelect').onchange = e => { ui.archiveFilter = e.target.value; renderDocumentsView(); };
+  zone.querySelectorAll('[data-download-doc]').forEach(b=>{
+    b.onclick = () => {
+      const d = data.archiveDocuments.find(x=>x.id===b.dataset.downloadDoc);
+      const a = document.createElement('a');
+      a.href = d.fileData; a.download = d.fileName || (d.title+'.pdf');
+      document.body.appendChild(a); a.click(); a.remove();
+    };
+  });
+  zone.querySelectorAll('[data-del-doc]').forEach(b=>{
+    b.onclick = () => {
+      if(!isAdmin(currentMember())){ showToast('Seuls les gestionnaires peuvent supprimer un document.'); return; }
+      if(confirm('Supprimer ce document ?')){
+        data.archiveDocuments = data.archiveDocuments.filter(d=>d.id!==b.dataset.delDoc);
+        saveData(); render();
+      }
+    };
+  });
+}
+
+/* ---- DOCUMENTS : Ajouter ---- */
+function renderDocumentsAdd(){
+  const zone = $('#archivesSubZone');
+  const me = currentMember();
+  if(!me){
+    zone.innerHTML = emptyState('🔒','Connectez-vous','Connectez-vous pour ajouter un document.');
+    return;
+  }
+  const today = new Date().toISOString().slice(0,10);
+  zone.innerHTML = `
+    <div class="field" style="margin-top:14px;"><label>Titre du document</label><input type="text" id="doc_title" placeholder="ex : Statuts de l’association"></div>
+    <div class="field"><label>Famille</label>
+      <select id="doc_family">${visibleFamilies(true).map(f=>`<option value="${f.id}">${escapeHTML(f.name)}</option>`).join('')}</select>
+    </div>
+    <div class="field"><label>Fichier</label><input type="file" id="doc_file"></div>
+    <button class="dashed-btn" id="saveDocBtn">Enregistrer le document</button>
+  `;
+  $('#saveDocBtn').onclick = () => {
+    const title = $('#doc_title').value.trim();
+    const familyId = $('#doc_family').value;
+    const fileInput = $('#doc_file');
+    if(!title){ showToast('Donnez un titre au document.'); return; }
+    if(!fileInput.files || fileInput.files.length===0){ showToast('Choisissez un fichier.'); return; }
+    const file = fileInput.files[0];
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      data.archiveDocuments.push({ id: uid(), title, date: today, familyId, fileData: e.target.result, fileName: file.name, uploadedBy: `${me.prenom} ${me.nom}` });
+      saveData(); ui.archivesSub='view'; render();
+      showToast('Document enregistré.');
+    };
+    reader.readAsDataURL(file);
+  };
 }
 
 $('#lightboxClose').onclick = () => $('#lightbox').classList.remove('active');
@@ -1909,7 +2118,7 @@ function openAddEventSheet(){
     <div class="field"><label>Nom de l’évènement</label><input type="text" id="ev_name" placeholder="ex : Fête de fin d’année 2026"></div>
     <div class="field"><label>Date</label><input type="date" id="ev_date" value="${today}"></div>
     <div class="field"><label>Famille</label>
-      <select id="ev_family">${[{id:'all',name:'Tout'}, ...data.families].map(f=>`<option value="${f.id}" ${f.id===(ui.activeFamilyId||'all')?'selected':''}>${escapeHTML(f.name)}</option>`).join('')}</select>
+      <select id="ev_family">${visibleFamilies(true).map(f=>`<option value="${f.id}" ${f.id===(ui.activeFamilyId||'all')?'selected':''}>${escapeHTML(f.name)}</option>`).join('')}</select>
     </div>
     <div class="sheet-actions">
       <button class="btn-secondary" id="cancelSheet">Annuler</button>
