@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
-<title>Le Registre ANYRON</title>
+<title>REGISTRE ANYRON</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -41,8 +41,8 @@
     min-height:100vh; display:flex; flex-direction:column; justify-content:center;
     padding: 32px 26px; background: rgba(30,42,56,0.82); color: var(--paper-light);
   }
-  .login-screen .eyebrow{ font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color:var(--brass); margin-bottom:8px; }
-  .login-screen h1{ font-family:'Fraunces',serif; font-weight:600; font-size:30px; margin:0 0 6px; }
+  .login-screen .eyebrow{ font-family:'IBM Plex Mono',monospace; font-size:18px; letter-spacing:0.06em; text-transform:uppercase; color:var(--brass); margin-bottom:10px; line-height:1.3; font-weight:700; }
+  .login-screen h1{ font-family:'Fraunces',serif; font-weight:700; font-size:38px; margin:0 0 6px; line-height:1.1; }
   .login-screen p.sub{ color:#C9D2DA; font-size:14px; margin:0 0 28px; line-height:1.5; }
   .login-screen .field label{ color:#C9D2DA; }
   .login-screen .field input{ background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.18); color:#fff; }
@@ -56,8 +56,8 @@
   /* ---------- HEADER ---------- */
   header.cover{ padding: 22px 20px 16px; background: var(--ink); color: var(--paper-light); position:relative; border-bottom: 4px double var(--brass); text-align:center; }
   header.cover .logout{ position:absolute; top:20px; right:18px; font-family:'Inter',sans-serif; font-size:12px; text-transform:none; letter-spacing:0; cursor:pointer; color:#C9D2DA; }
-  header.cover .eyebrow{ font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:0.12em; text-transform:uppercase; color: var(--brass); margin-bottom:6px; }
-  header.cover h1{ font-family:'Fraunces',serif; font-weight:600; font-size:25px; margin:0; letter-spacing:-0.01em; }
+  header.cover .eyebrow{ font-family:'IBM Plex Mono',monospace; font-size:15px; letter-spacing:0.04em; text-transform:uppercase; color: var(--brass); margin-bottom:8px; line-height:1.3; font-weight:700; }
+  header.cover h1{ font-family:'Fraunces',serif; font-weight:700; font-size:32px; margin:0; letter-spacing:-0.01em; }
   header.cover .userline{ font-family:'Fraunces',serif; font-style:italic; font-size:14px; color:#C9D2DA; margin-top:4px; }
 
   nav.tabs{ display:flex; padding: 0 12px; gap: 2px; border-bottom: 1px solid var(--paper-line); background:var(--paper); overflow-x:auto; -webkit-overflow-scrolling:touch; }
@@ -133,7 +133,7 @@
   .empty .title{ font-family:'Fraunces',serif; font-size:15px; color:var(--ink-soft); margin-bottom:4px;}
 
   /* ---------- MEMBER CARD ---------- */
-  .fam-tag{ font-family:'IBM Plex Mono',monospace; font-size:9.5px; text-transform:uppercase; letter-spacing:0.05em; color:var(--ink-faint); margin: 14px 0 6px 2px; }
+  .fam-tag{ display:inline-block; font-family:'IBM Plex Mono',monospace; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:#fff; background:var(--ink); padding:5px 12px; border-radius:20px; margin: 16px 0 8px 2px; }
   .member-card{ background: var(--paper-light); border-radius: var(--radius); box-shadow: var(--shadow); padding: 13px 14px; margin-bottom: 8px; display:flex; align-items:center; gap:12px; }
   .member-card .who{ width:42px;height:42px;border-radius:50%; display:flex;align-items:center;justify-content:center; font-family:'Fraunces',serif; font-weight:600; font-size:15px; background: var(--green-soft); color:var(--green); flex-shrink:0; }
   .member-card .info{ flex:1; }
@@ -207,8 +207,8 @@
 
   <!-- LOGIN -->
   <div class="login-screen" id="loginScreen" style="display:none;">
-    <div class="eyebrow">ANYRONVIWO  MISSOGBE MISSOGBE GOGO!!!!</div>
-    <h1 id="loginTitle">Le Registre ANYRON</h1>
+    <div class="eyebrow">ANYRONVIWO MISSOGBE MISSOGBE GOGO !!!</div>
+    <h1 id="loginTitle">REGISTRE ANYRON</h1>
     <p class="sub" id="loginSub">Entrez votre code personnel pour accéder au registre.</p>
     <div class="login-error" id="loginError"></div>
     <div id="loginFormZone"></div>
@@ -218,8 +218,8 @@
   <div id="appShell" style="display:none;">
     <header class="cover">
       <span class="logout" id="logoutBtn">Déconnexion</span>
-      <div class="eyebrow">Caisse familiale</div>
-      <h1>Le Registre</h1>
+      <div class="eyebrow">ANYRONVIWO MISSOGBE MISSOGBE GOGO !!!</div>
+      <h1>REGISTRE ANYRON</h1>
       <div class="userline" id="userline"></div>
     </header>
 
@@ -464,11 +464,48 @@ function renderLoginForm(){
     <div class="field"><label>Code personnel</label>${passwordFieldHTML('l_code', '', 'ex : 4821 ou motdepasse')}</div>
     <div class="sheet-actions" style="margin-top:6px;"><button class="btn-primary" id="l_submit" style="flex:1;padding:13px;border-radius:12px;border:none;font-weight:600;font-size:14px;cursor:pointer;">Se connecter</button></div>
     <div class="switch-link">Pas encore de profil ? <a id="l_signup">Créer mon profil</a></div>
+    <div class="switch-link">Code oublié ? <a id="l_forgot">Réinitialiser</a></div>
   `;
   $('#l_submit').onclick = doLogin;
   $('#l_code').addEventListener('keydown', e=>{ if(e.key==='Enter') doLogin(); });
   wirePasswordToggles();
   $('#l_signup').onclick = renderSignupForm;
+  $('#l_forgot').onclick = renderForgotForm;
+}
+
+function renderForgotForm(){
+  $('#loginError').classList.remove('show');
+  $('#loginFormZone').innerHTML = `
+    <p class="sub" style="margin:0 0 18px;">Indiquez votre nom et prénom : un administrateur (Daniel ou Prosper) sera prévenu et pourra vous communiquer un nouveau code.</p>
+    <div class="field"><label>Prénom</label><input type="text" id="f_prenom" placeholder="ex : Awa"></div>
+    <div class="field"><label>Nom</label><input type="text" id="f_nom" placeholder="ex : Diallo"></div>
+    <div class="sheet-actions" style="margin-top:6px;"><button class="btn-primary" id="f_submit" style="flex:1;padding:13px;border-radius:12px;border:none;font-weight:600;font-size:14px;cursor:pointer;">Prévenir un administrateur</button></div>
+    <div class="switch-link">Retour à la <a id="f_login">connexion</a></div>
+  `;
+  $('#f_login').onclick = renderLoginForm;
+  $('#f_submit').onclick = () => {
+    const prenom = $('#f_prenom').value.trim();
+    const nom = $('#f_nom').value.trim();
+    if(!prenom || !nom){ loginError('Indiquez votre nom et prénom.'); return; }
+    const member = data.members.find(m => normalizeStr(m.prenom)===normalizeStr(prenom) && normalizeStr(m.nom)===normalizeStr(nom));
+    if(!member){ loginError('Aucun profil trouvé avec ce nom. Vérifiez l’orthographe ou créez un profil.'); return; }
+    const admins = adminMembers();
+    if(admins.length===0){ loginError('Aucun administrateur inscrit pour l’instant, impossible de traiter la demande.'); return; }
+    admins.forEach(a=>{
+      data.suggestions.push({
+        id: uid(), senderId: member.id, senderName: `${member.prenom} ${member.nom}`,
+        recipientId: a.id, recipientName: `${a.prenom} ${a.nom}`,
+        text: `${member.prenom} ${member.nom} a oublié son code personnel et demande une réinitialisation. Modifiez sa fiche dans "Membres" pour lui définir un nouveau code, puis communiquez-le-lui directement.`,
+        date: new Date().toISOString(), lu: false
+      });
+    });
+    saveData();
+    renderLoginForm();
+    loginError('Demande envoyée. Un administrateur va vous contacter avec un nouveau code.');
+    $('#loginError').style.background = 'rgba(63,107,79,0.18)';
+    $('#loginError').style.color = '#B7D9C4';
+    $('#loginError').style.borderColor = 'rgba(63,107,79,0.4)';
+  };
 }
 
 function doLogin(){
