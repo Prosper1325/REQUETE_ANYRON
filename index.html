@@ -385,6 +385,22 @@ function familyCheckboxesHTML(idPrefix, selectedIds){
 function getCheckedFamilyIds(idPrefix){
   return data.families.filter(f => { const el = $('#'+idPrefix+'_'+f.id); return el && el.checked; }).map(f=>f.id);
 }
+function passwordFieldHTML(id, value, placeholder){
+  return `<div style="position:relative;">
+    <input type="password" id="${id}" value="${escapeHTML(value||'')}" placeholder="${placeholder||''}" style="padding-right:44px;">
+    <button type="button" data-toggle-pass="${id}" title="Afficher/masquer" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:17px;color:var(--ink-faint);padding:6px;line-height:1;">👁</button>
+  </div>`;
+}
+function wirePasswordToggles(scope){
+  (scope||document).querySelectorAll('[data-toggle-pass]').forEach(b=>{
+    b.onclick = () => {
+      const inp = $('#'+b.dataset.togglePass);
+      if(!inp) return;
+      if(inp.type==='password'){ inp.type='text'; b.textContent='🙈'; }
+      else { inp.type='password'; b.textContent='👁'; }
+    };
+  });
+}
 
 function currentMember(){ return data.members.find(m=>m.id===session.memberId); }
 
@@ -445,12 +461,13 @@ function showLogin(){
 function renderLoginForm(){
   $('#loginError').classList.remove('show');
   $('#loginFormZone').innerHTML = `
-    <div class="field"><label>Code personnel</label><input type="text" id="l_code" placeholder="ex : 4821 ou motdepasse"></div>
+    <div class="field"><label>Code personnel</label>${passwordFieldHTML('l_code', '', 'ex : 4821 ou motdepasse')}</div>
     <div class="sheet-actions" style="margin-top:6px;"><button class="btn-primary" id="l_submit" style="flex:1;padding:13px;border-radius:12px;border:none;font-weight:600;font-size:14px;cursor:pointer;">Se connecter</button></div>
     <div class="switch-link">Pas encore de profil ? <a id="l_signup">Créer mon profil</a></div>
   `;
   $('#l_submit').onclick = doLogin;
   $('#l_code').addEventListener('keydown', e=>{ if(e.key==='Enter') doLogin(); });
+  wirePasswordToggles();
   $('#l_signup').onclick = renderSignupForm;
 }
 
@@ -475,7 +492,7 @@ function renderSignupForm(){
       ${familyCheckboxesHTML('s_fam', [])}
       <small class="hint">Votre demande sera envoyée aux administrateurs pour validation.</small>
     </div>
-    <div class="field"><label>Choisissez votre code personnel</label><input type="text" id="s_code" placeholder="ex : 4821">
+    <div class="field"><label>Choisissez votre code personnel</label>${passwordFieldHTML('s_code', '', 'ex : 4821')}
       <small class="hint">Ce code vous servira à vous connecter et à protéger votre fiche. Gardez-le pour vous.</small>
     </div>
     <div class="sheet-actions" style="margin-top:6px;"><button class="btn-primary" id="s_submit" style="flex:1;padding:13px;border-radius:12px;border:none;font-weight:600;font-size:14px;cursor:pointer;">Envoyer ma demande</button></div>
@@ -483,6 +500,7 @@ function renderSignupForm(){
   `;
   $('#s_login').onclick = renderLoginForm;
   $('#s_submit').onclick = doSignup;
+  wirePasswordToggles();
 }
 
 function doSignup(){
@@ -1765,13 +1783,14 @@ function openEditMemberSheet(memberId){
     <div class="field"><label>Prénom</label><input type="text" id="e_prenom" value="${escapeHTML(m.prenom)}"></div>
     <div class="field"><label>Nom</label><input type="text" id="e_nom" value="${escapeHTML(m.nom)}"></div>
     <div class="field"><label>Famille(s)</label>${familyCheckboxesHTML('e_fam', m.familyIds||[])}</div>
-    <div class="field"><label>Code personnel</label><input type="text" id="e_code" value="${escapeHTML(m.code)}"></div>
+    <div class="field"><label>Code personnel</label>${passwordFieldHTML('e_code', m.code, '')}</div>
     <div class="sheet-actions">
       <button class="btn-secondary" id="cancelSheet">Annuler</button>
       <button class="btn-primary" id="saveSheet">Enregistrer</button>
     </div>
   `;
   $('#cancelSheet').onclick = closeSheet;
+  wirePasswordToggles();
   $('#saveSheet').onclick = () => {
     const newCode = $('#e_code').value.trim();
     if(data.members.some(x=>x.code===newCode && x.id!==m.id)){ showToast('Ce code est déjà pris.'); return; }
@@ -1800,13 +1819,14 @@ function openAddMemberSheet(){
     <div class="field"><label>Prénom</label><input type="text" id="n_prenom" placeholder="ex : Awa"></div>
     <div class="field"><label>Nom</label><input type="text" id="n_nom" placeholder="ex : Diallo"></div>
     <div class="field"><label>Famille(s)</label>${familyCheckboxesHTML('n_fam', preselect)}</div>
-    <div class="field"><label>Code personnel (choisi par la personne)</label><input type="text" id="n_code" placeholder="ex : 4821"></div>
+    <div class="field"><label>Code personnel (choisi par la personne)</label>${passwordFieldHTML('n_code', '', 'ex : 4821')}</div>
     <div class="sheet-actions">
       <button class="btn-secondary" id="cancelSheet">Annuler</button>
       <button class="btn-primary" id="saveSheet">Ajouter</button>
     </div>
   `;
   $('#cancelSheet').onclick = closeSheet;
+  wirePasswordToggles();
   $('#saveSheet').onclick = () => {
     const prenom = $('#n_prenom').value.trim();
     const nom = $('#n_nom').value.trim();
@@ -2319,9 +2339,10 @@ function renderProfil(){
         ? familyCheckboxesHTML('p_fam', me.familyIds||[])
         : `<p class="muted">${(me.familyIds||[]).length>0 ? data.families.filter(f=>me.familyIds.includes(f.id)).map(f=>escapeHTML(f.name)).join(', ') : 'Aucune'} — pour changer, écrivez à un administrateur dans Suggestions.</p>`}
     </div>
-    <div class="field"><label>Mot de passe (code personnel)</label><input type="text" id="p_code" value="${escapeHTML(me.code)}"></div>
+    <div class="field"><label>Mot de passe (code personnel)</label>${passwordFieldHTML('p_code', me.code, '')}</div>
     <button class="dashed-btn" id="saveProfilBtn">Enregistrer les modifications</button>
   `;
+  wirePasswordToggles();
   $('#saveProfilBtn').onclick = () => {
     const prenom = $('#p_prenom').value.trim();
     const nom = $('#p_nom').value.trim();
