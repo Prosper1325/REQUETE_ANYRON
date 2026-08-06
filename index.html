@@ -1779,7 +1779,6 @@ function openUpcomingSheet(evId){
   openSheet();
 }
 
-
 /* ================= ADD COTISATION SHEET ================= */
 let listMode = 'existing';
 let cotisationEntryMode = 'fiche';
@@ -1866,7 +1865,6 @@ function renderFicheForm(famId, famMembers, famLists){
   $('#mode_new').onclick = () => { listMode='new'; $('#mode_new').classList.add('active'); $('#mode_existing').classList.remove('active'); renderListField(); };
   $('#cancelSheet').onclick = closeSheet;
   $('#saveSheet').onclick = () => {
-    const amount = parseFloat($('#f_amount').value);
     const amount = parseFloat($('#f_amount').value);
     if(!amount || amount<=0){ showToast('Indiquez un montant valide.'); return; }
     let listId;
